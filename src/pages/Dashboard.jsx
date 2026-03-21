@@ -3,6 +3,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts'
+import { useStockPrices } from '../useStockPrices'
 
 const CATEGORY_COLORS = {
   'Stocks':      '#4d9fff',
@@ -93,6 +94,7 @@ function CustomTooltip({ active, payload, label }) {
 
 export default function Dashboard({ assets }) {
   const [cryptoPrices, setCryptoPrices] = useState({})
+  const stockPrices = useStockPrices(assets)
 
   const total = assets.reduce((sum, a) => sum + a.value, 0)
   const chartData = [...HISTORY.slice(0, -1), { month: 'Now', value: total }]
@@ -115,9 +117,27 @@ export default function Dashboard({ assets }) {
     .filter(a => a.category === 'Crypto' && a.ticker && cryptoPrices[a.ticker])
     .map(a => cryptoPrices[a.ticker].usd_24h_change)
 
-  const avgChange = cryptoChanges.length
+  const avgCryptoChange = cryptoChanges.length
     ? cryptoChanges.reduce((s, c) => s + c, 0) / cryptoChanges.length
     : null
+
+  const stockChanges = assets
+    .filter(a => a.category === 'Stocks' && a.ticker && stockPrices[a.ticker])
+    .map(a => stockPrices[a.ticker].change)
+
+  const avgStockChange = stockChanges.length
+    ? stockChanges.reduce((s, c) => s + c, 0) / stockChanges.length
+    : null
+
+  function getLiveChange(asset) {
+    if (asset.category === 'Crypto' && asset.ticker && cryptoPrices[asset.ticker]) {
+      return cryptoPrices[asset.ticker].usd_24h_change
+    }
+    if (asset.category === 'Stocks' && asset.ticker && stockPrices[asset.ticker]) {
+      return stockPrices[asset.ticker].change
+    }
+    return null
+  }
 
   return (
     <div style={{ maxWidth: 1100 }}>
@@ -153,18 +173,20 @@ export default function Dashboard({ assets }) {
           subColor="var(--green)" delay={0} accent="var(--green)"
         />
         <StatCard
-          label="Biggest holding"
-          value={assets.length ? assets.reduce((a, b) => a.value > b.value ? a : b).name : '—'}
-          sub={"$" + (assets.length ? Math.max(...assets.map(a => a.value)).toLocaleString() : '0')}
-          subColor="var(--muted2)" delay={80} accent="var(--blue)"
+          label="Stocks 24h"
+          value={avgStockChange != null ? (avgStockChange >= 0 ? '+' : '') + avgStockChange.toFixed(2) + '%' : '—'}
+          sub={avgStockChange != null ? "Avg. across your stocks" : "Add stocks with tickers"}
+          subColor={avgStockChange != null ? (avgStockChange >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--muted)'}
+          delay={80}
+          accent={avgStockChange != null ? (avgStockChange >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--blue)'}
         />
         <StatCard
           label="Crypto 24h"
-          value={avgChange != null ? (avgChange >= 0 ? '+' : '') + avgChange.toFixed(2) + '%' : '—'}
-          sub={avgChange != null ? "Avg. across your crypto" : "No crypto data yet"}
-          subColor={avgChange != null ? (avgChange >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--muted)'}
+          value={avgCryptoChange != null ? (avgCryptoChange >= 0 ? '+' : '') + avgCryptoChange.toFixed(2) + '%' : '—'}
+          sub={avgCryptoChange != null ? "Avg. across your crypto" : "No crypto data yet"}
+          subColor={avgCryptoChange != null ? (avgCryptoChange >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--muted)'}
           delay={160}
-          accent={avgChange != null ? (avgChange >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--purple)'}
+          accent={avgCryptoChange != null ? (avgCryptoChange >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--purple)'}
         />
       </div>
 
@@ -251,9 +273,12 @@ export default function Dashboard({ assets }) {
         </div>
 
         {topAssets.map((asset, i) => {
-          const liveData = asset.ticker ? cryptoPrices[asset.ticker] : null
-          const change = liveData?.usd_24h_change
+          const change = getLiveChange(asset)
           const pct = (asset.value / total * 100).toFixed(1)
+          const livePrice = asset.category === 'Stocks' && asset.ticker && stockPrices[asset.ticker]
+            ? stockPrices[asset.ticker].price
+            : null
+
           return (
             <div key={asset.id} style={{
               display: 'flex', alignItems: 'center', padding: '14px 24px',
@@ -277,7 +302,14 @@ export default function Dashboard({ assets }) {
               </div>
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: 14, fontWeight: 500, fontFamily: 'var(--font-body)' }}>{asset.name}</p>
-                <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--font-body)' }}>{asset.category}</p>
+                <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--font-body)' }}>
+                  {asset.category}
+                  {livePrice && (
+                    <span style={{ marginLeft: 8, color: 'var(--muted2)' }}>
+                      ${livePrice.toLocaleString()} / share
+                    </span>
+                  )}
+                </p>
               </div>
               <div style={{ textAlign: 'right', marginRight: 24 }}>
                 <p style={{ fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
