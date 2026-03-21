@@ -18,25 +18,240 @@ const CATEGORY_ICONS = {
   'Cash':        '💵',
 }
 
+const POPULAR_STOCKS = [
+  { ticker: 'AAPL',  name: 'Apple' },
+  { ticker: 'NVDA',  name: 'NVIDIA' },
+  { ticker: 'MSFT',  name: 'Microsoft' },
+  { ticker: 'GOOGL', name: 'Google' },
+  { ticker: 'AMZN',  name: 'Amazon' },
+  { ticker: 'TSLA',  name: 'Tesla' },
+  { ticker: 'META',  name: 'Meta' },
+  { ticker: 'BRK.B', name: 'Berkshire Hathaway' },
+  { ticker: 'JPM',   name: 'JPMorgan' },
+  { ticker: 'V',     name: 'Visa' },
+  { ticker: 'SPY',   name: 'S&P 500 ETF' },
+  { ticker: 'QQQ',   name: 'Nasdaq ETF' },
+]
+
+const POPULAR_CRYPTO = [
+  { ticker: 'bitcoin',  name: 'Bitcoin (BTC)' },
+  { ticker: 'ethereum', name: 'Ethereum (ETH)' },
+  { ticker: 'solana',   name: 'Solana (SOL)' },
+  { ticker: 'ripple',   name: 'XRP' },
+  { ticker: 'dogecoin', name: 'Dogecoin (DOGE)' },
+  { ticker: 'cardano',  name: 'Cardano (ADA)' },
+]
+
+function AddForm({ onAdd, onClose }) {
+  const [category, setCategory] = useState('Stocks')
+  const [ticker, setTicker] = useState('')
+  const [name, setName] = useState('')
+  const [value, setValue] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+
+  const inputStyle = {
+    padding: '10px 14px', borderRadius: 10,
+    border: '1px solid var(--border2)',
+    background: 'var(--bg3)', color: 'var(--text)',
+    fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)',
+    width: '100%',
+  }
+
+  function handleTickerInput(val) {
+    setTicker(val.toUpperCase())
+    if (category === 'Stocks') {
+      const matches = POPULAR_STOCKS.filter(s =>
+        s.ticker.startsWith(val.toUpperCase()) || s.name.toLowerCase().startsWith(val.toLowerCase())
+      )
+      setSuggestions(matches.slice(0, 4))
+    }
+  }
+
+  function handleCryptoInput(val) {
+    setTicker(val)
+    const matches = POPULAR_CRYPTO.filter(s =>
+      s.name.toLowerCase().includes(val.toLowerCase()) || s.ticker.toLowerCase().startsWith(val.toLowerCase())
+    )
+    setSuggestions(matches.slice(0, 4))
+  }
+
+  function selectSuggestion(s) {
+    setTicker(s.ticker)
+    setName(s.name)
+    setSuggestions([])
+  }
+
+  function handleAdd() {
+    if (!value) return
+    if (category === 'Stocks' && !ticker) return
+    if (category === 'Crypto' && !ticker) return
+    if ((category === 'Real Estate' || category === 'Retirement' || category === 'Cash') && !name) return
+
+    const finalName = category === 'Stocks'
+      ? (POPULAR_STOCKS.find(s => s.ticker === ticker)?.name || ticker) + ' (' + ticker + ')'
+      : category === 'Crypto'
+        ? (POPULAR_CRYPTO.find(s => s.ticker === ticker)?.name || ticker)
+        : name
+
+    onAdd({
+      id: Date.now(),
+      name: finalName,
+      category,
+      value: parseFloat(value),
+      ticker: (category === 'Stocks' || category === 'Crypto') ? ticker : null,
+    })
+
+    setTicker('')
+    setName('')
+    setValue('')
+    setSuggestions([])
+    onClose()
+  }
+
+  return (
+    <div className="fade-up" style={{
+      background: 'var(--bg2)', borderRadius: 16, padding: '24px',
+      border: '1px solid var(--border2)', marginBottom: 20,
+    }}>
+      <p style={{ fontWeight: 600, marginBottom: 20, fontSize: 16, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
+        New asset
+      </p>
+
+      {/* Category selector */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 20 }}>
+        {CATEGORIES.map(cat => (
+          <button key={cat} onClick={() => { setCategory(cat); setTicker(''); setName(''); setSuggestions([]) }} style={{
+            padding: '10px 8px', borderRadius: 10, fontSize: 12,
+            fontWeight: category === cat ? 600 : 400,
+            background: category === cat ? CATEGORY_COLORS[cat] + '20' : 'var(--bg3)',
+            color: category === cat ? CATEGORY_COLORS[cat] : 'var(--muted)',
+            border: category === cat ? '1px solid ' + CATEGORY_COLORS[cat] + '50' : '1px solid var(--border)',
+            cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'var(--font-body)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+          }}>
+            <span style={{ fontSize: 18 }}>{CATEGORY_ICONS[cat]}</span>
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Dynamic fields */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12 }}>
+
+        {/* Stocks */}
+        {category === 'Stocks' && (
+          <div style={{ position: 'relative' }}>
+            <input
+              placeholder="Ticker (e.g. AAPL)"
+              value={ticker}
+              onChange={e => handleTickerInput(e.target.value)}
+              style={inputStyle}
+            />
+            {suggestions.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+                background: 'var(--bg3)', border: '1px solid var(--border2)',
+                borderRadius: 10, marginTop: 4, overflow: 'hidden',
+              }}>
+                {suggestions.map(s => (
+                  <div key={s.ticker} onClick={() => selectSuggestion(s)} style={{
+                    padding: '10px 14px', cursor: 'pointer', fontSize: 13,
+                    display: 'flex', justifyContent: 'space-between',
+                    fontFamily: 'var(--font-body)',
+                    transition: 'background 0.1s',
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ fontWeight: 600, color: 'var(--blue)' }}>{s.ticker}</span>
+                    <span style={{ color: 'var(--muted)' }}>{s.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Crypto */}
+        {category === 'Crypto' && (
+          <div style={{ position: 'relative' }}>
+            <input
+              placeholder="Search crypto (e.g. Bitcoin)"
+              value={ticker}
+              onChange={e => handleCryptoInput(e.target.value)}
+              style={inputStyle}
+            />
+            {suggestions.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+                background: 'var(--bg3)', border: '1px solid var(--border2)',
+                borderRadius: 10, marginTop: 4, overflow: 'hidden',
+              }}>
+                {suggestions.map(s => (
+                  <div key={s.ticker} onClick={() => selectSuggestion(s)} style={{
+                    padding: '10px 14px', cursor: 'pointer', fontSize: 13,
+                    display: 'flex', justifyContent: 'space-between',
+                    fontFamily: 'var(--font-body)',
+                    transition: 'background 0.1s',
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <span style={{ fontWeight: 600, color: 'var(--amber)' }}>{s.name}</span>
+                    <span style={{ color: 'var(--muted)' }}>{s.ticker}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Other categories */}
+        {(category === 'Real Estate' || category === 'Retirement' || category === 'Cash') && (
+          <input
+            placeholder={
+              category === 'Real Estate' ? 'Property description' :
+              category === 'Retirement' ? 'Account name (e.g. Fidelity 401k)' :
+              'Account name (e.g. Chase Checking)'
+            }
+            value={name}
+            onChange={e => setName(e.target.value)}
+            style={inputStyle}
+          />
+        )}
+
+        {/* Value field always shown */}
+        <input
+          placeholder="Value ($)"
+          type="number"
+          value={value}
+          onChange={e => setValue(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
+          style={inputStyle}
+        />
+
+        <button onClick={handleAdd} style={{
+          background: 'linear-gradient(135deg, var(--green), var(--teal))',
+          color: '#0a0a0f', padding: '10px 22px', borderRadius: 10,
+          fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer',
+          fontFamily: 'var(--font-display)', letterSpacing: 0.5, whiteSpace: 'nowrap',
+        }}>
+          Save
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Assets({ assets, setAssets }) {
   const [showAdd, setShowAdd] = useState(false)
   const [filter, setFilter] = useState('All')
-  const [form, setForm] = useState({ name: '', category: 'Stocks', value: '', ticker: '' })
 
   const total = assets.reduce((s, a) => s + a.value, 0)
   const filtered = filter === 'All' ? assets : assets.filter(a => a.category === filter)
 
-  function addAsset() {
-    if (!form.name || !form.value) return
-    setAssets([...assets, {
-      id: Date.now(),
-      name: form.name,
-      category: form.category,
-      value: parseFloat(form.value),
-      ticker: form.ticker || null,
-    }])
-    setForm({ name: '', category: 'Stocks', value: '', ticker: '' })
-    setShowAdd(false)
+  function addAsset(asset) {
+    setAssets([...assets, asset])
   }
 
   function removeAsset(id) {
@@ -67,7 +282,7 @@ export default function Assets({ assets, setAssets }) {
           onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
           onMouseLeave={e => e.currentTarget.style.opacity = '1'}
         >
-          + Add asset
+          {showAdd ? '✕ Cancel' : '+ Add asset'}
         </button>
       </div>
 
@@ -104,49 +319,7 @@ export default function Assets({ assets, setAssets }) {
 
       {/* Add form */}
       {showAdd && (
-        <div className="fade-up" style={{
-          background: 'var(--bg2)', borderRadius: 16, padding: '24px',
-          border: '1px solid var(--border2)', marginBottom: 20,
-        }}>
-          <p style={{ fontWeight: 600, marginBottom: 16, fontSize: 16, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
-            New asset
-          </p>
-          <div className="add-form-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto', gap: 12 }}>
-            {[
-              { placeholder: 'Asset name', key: 'name', type: 'text' },
-              { placeholder: 'Value ($)', key: 'value', type: 'number' },
-              { placeholder: 'Ticker (optional)', key: 'ticker', type: 'text' },
-            ].map(f => (
-              <input key={f.key} placeholder={f.placeholder} type={f.type}
-                value={form[f.key]} onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                style={{
-                  padding: '10px 14px', borderRadius: 10,
-                  border: '1px solid var(--border2)',
-                  background: 'var(--bg3)', color: 'var(--text)',
-                  fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)',
-                }}
-              />
-            ))}
-            <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
-              style={{
-                padding: '10px 14px', borderRadius: 10,
-                border: '1px solid var(--border2)',
-                background: 'var(--bg3)', color: 'var(--text)',
-                fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)',
-              }}
-            >
-              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-            <button onClick={addAsset} style={{
-              background: 'linear-gradient(135deg, var(--green), var(--teal))',
-              color: '#0a0a0f', padding: '10px 22px', borderRadius: 10,
-              fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer',
-              fontFamily: 'var(--font-display)', letterSpacing: 0.5,
-            }}>
-              Save
-            </button>
-          </div>
-        </div>
+        <AddForm onAdd={addAsset} onClose={() => setShowAdd(false)} />
       )}
 
       {/* Filter pills */}
@@ -187,7 +360,7 @@ export default function Assets({ assets, setAssets }) {
         {filtered.length === 0 && (
           <div style={{ padding: '48px', textAlign: 'center', color: 'var(--muted)' }}>
             <p style={{ fontSize: 16, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
-              No assets in this category yet.
+              No assets yet. Click + Add asset to get started.
             </p>
           </div>
         )}
@@ -217,7 +390,7 @@ export default function Assets({ assets, setAssets }) {
                   <p style={{ fontSize: 14, fontWeight: 500, fontFamily: 'var(--font-body)' }}>{asset.name}</p>
                   {asset.ticker && (
                     <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--font-body)' }}>
-                      {asset.ticker.toUpperCase()}
+                      {asset.category === 'Stocks' ? asset.ticker.toUpperCase() : asset.ticker}
                     </p>
                   )}
                 </div>
