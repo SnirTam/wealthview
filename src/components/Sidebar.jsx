@@ -23,17 +23,15 @@ const NAV = [
   },
 ]
 
-export default function Sidebar({ page, setPage }) {
+export default function Sidebar({ page, setPage, onSignOut, user }) {
   return (
     <div style={{
       width: 240,
       background: 'var(--bg2)',
       borderRight: '1px solid var(--border)',
-      display: 'flex',
-      flexDirection: 'column',
+      display: 'flex', flexDirection: 'column',
       padding: '28px 16px',
-      height: '100vh',
-      flexShrink: 0,
+      height: '100vh', flexShrink: 0,
     }}>
 
       {/* Logo */}
@@ -43,8 +41,7 @@ export default function Sidebar({ page, setPage }) {
             width: 32, height: 32, borderRadius: 10,
             background: 'linear-gradient(135deg, var(--green), var(--teal))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, fontWeight: 700,
-            fontFamily: 'var(--font-display)',
+            fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-display)',
             color: '#0a0a0f', flexShrink: 0,
           }}>W</div>
           <div>
@@ -63,29 +60,24 @@ export default function Sidebar({ page, setPage }) {
         <p style={{
           fontSize: 10, fontWeight: 500, color: 'var(--muted)',
           letterSpacing: 1.5, textTransform: 'uppercase',
-          padding: '0 12px', marginBottom: 8,
-          fontFamily: 'var(--font-body)',
+          padding: '0 12px', marginBottom: 8, fontFamily: 'var(--font-body)',
         }}>
           Menu
         </p>
         {NAV.map(item => {
           const active = page === item.id
           return (
-            <button
-              key={item.id}
-              onClick={() => setPage(item.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 12px', borderRadius: 10,
-                fontSize: 13, fontWeight: active ? 500 : 400,
-                fontFamily: 'var(--font-body)',
-                background: active ? 'rgba(0,217,139,0.1)' : 'transparent',
-                color: active ? 'var(--green)' : 'var(--muted2)',
-                border: active ? '1px solid rgba(0,217,139,0.2)' : '1px solid transparent',
-                cursor: 'pointer', textAlign: 'left', width: '100%',
-                transition: 'all 0.15s ease',
-              }}
-            >
+            <button key={item.id} onClick={() => setPage(item.id)} style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 12px', borderRadius: 10,
+              fontSize: 13, fontWeight: active ? 500 : 400,
+              fontFamily: 'var(--font-body)',
+              background: active ? 'rgba(0,217,139,0.1)' : 'transparent',
+              color: active ? 'var(--green)' : 'var(--muted2)',
+              border: active ? '1px solid rgba(0,217,139,0.2)' : '1px solid transparent',
+              cursor: 'pointer', textAlign: 'left', width: '100%',
+              transition: 'all 0.15s ease',
+            }}>
               <span style={{ opacity: active ? 1 : 0.6 }}>{item.icon}</span>
               {item.label}
               {active && (
@@ -100,12 +92,12 @@ export default function Sidebar({ page, setPage }) {
         })}
       </nav>
 
-      {/* Bottom upgrade card */}
+      {/* Bottom section */}
       <div style={{ marginTop: 'auto' }}>
         <div style={{
           borderRadius: 14, padding: '16px',
           background: 'var(--bg3)', border: '1px solid var(--border)',
-          position: 'relative', overflow: 'hidden',
+          position: 'relative', overflow: 'hidden', marginBottom: 12,
         }}>
           <div style={{
             position: 'absolute', top: -20, right: -20,
@@ -123,25 +115,46 @@ export default function Sidebar({ page, setPage }) {
             background: 'linear-gradient(135deg, var(--green), var(--teal))',
             color: '#0a0a0f', fontWeight: 600,
             border: 'none', cursor: 'pointer',
-            fontFamily: 'var(--font-display)', letterSpacing: 0.5,
-            fontSize: 14,
+            fontFamily: 'var(--font-display)', letterSpacing: 0.5, fontSize: 14,
           }}>
             Upgrade to Pro →
           </button>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 12px 4px' }}>
+        {/* User + sign out */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '12px', borderRadius: 10,
+          border: '1px solid var(--border)',
+          background: 'var(--bg3)',
+        }}>
           <div style={{
-            width: 30, height: 30, borderRadius: '50%',
+            width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
             background: 'linear-gradient(135deg, var(--purple), var(--blue))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13, fontWeight: 600, color: '#fff',
-            fontFamily: 'var(--font-display)',
-          }}>U</div>
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)' }}>User</p>
-            <p style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Free plan</p>
+            fontSize: 12, fontWeight: 600, color: '#fff',
+          }}>
+            {user?.email?.[0].toUpperCase()}
           </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontSize: 11, fontWeight: 500, fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {user?.email}
+            </p>
+            <p style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Free plan</p>
+          </div>
+          <button
+            onClick={onSignOut}
+            title="Sign out"
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'var(--muted)', fontSize: 16, padding: '2px',
+              transition: 'color 0.15s', flexShrink: 0,
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--red)'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--muted)'}
+          >
+            ⏻
+          </button>
         </div>
       </div>
     </div>
