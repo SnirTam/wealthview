@@ -32,8 +32,6 @@ export default function Sidebar({ page, setPage }) {
       display: 'flex',
       flexDirection: 'column',
       padding: '28px 16px',
-      position: 'sticky',
-      top: 0,
       height: '100vh',
       flexShrink: 0,
     }}>
@@ -47,14 +45,10 @@ export default function Sidebar({ page, setPage }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 18, fontWeight: 700,
             fontFamily: 'var(--font-display)',
-            color: '#0a0a0f',
-            flexShrink: 0,
+            color: '#0a0a0f', flexShrink: 0,
           }}>W</div>
           <div>
-            <p style={{
-              fontFamily: 'var(--font-display)',
-              fontWeight: 700, fontSize: 18, letterSpacing: 0.3,
-            }}>
+            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, letterSpacing: 0.3 }}>
               Wealthview
             </p>
             <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1, fontFamily: 'var(--font-body)' }}>
@@ -121,16 +115,13 @@ export default function Sidebar({ page, setPage }) {
           <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4, fontFamily: 'var(--font-body)' }}>
             Current plan
           </p>
-          <p style={{
-            fontSize: 18, fontWeight: 600, marginBottom: 12,
-            fontFamily: 'var(--font-display)', letterSpacing: 0.3,
-          }}>
+          <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 12, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
             Free tier
           </p>
           <button style={{
             width: '100%', padding: '8px', borderRadius: 8,
             background: 'linear-gradient(135deg, var(--green), var(--teal))',
-            color: '#0a0a0f', fontWeight: 600, fontSize: 12,
+            color: '#0a0a0f', fontWeight: 600,
             border: 'none', cursor: 'pointer',
             fontFamily: 'var(--font-display)', letterSpacing: 0.5,
             fontSize: 14,
@@ -139,10 +130,7 @@ export default function Sidebar({ page, setPage }) {
           </button>
         </div>
 
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '16px 12px 4px',
-        }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 12px 4px' }}>
           <div style={{
             width: 30, height: 30, borderRadius: '50%',
             background: 'linear-gradient(135deg, var(--purple), var(--blue))',

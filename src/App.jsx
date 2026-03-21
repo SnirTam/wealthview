@@ -25,6 +25,7 @@ function loadAssets() {
 export default function App() {
   const [page, setPage] = useState('dashboard')
   const [assets, setAssets] = useState(loadAssets)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     localStorage.setItem('wealthview_assets', JSON.stringify(assets))
@@ -32,10 +33,39 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <Sidebar page={page} setPage={setPage} />
+
+      {/* Mobile overlay */}
+      {menuOpen && (
+        <div
+          onClick={() => setMenuOpen(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            zIndex: 40,
+          }}
+        />
+      )}
+
+      {/* Sidebar — hidden on mobile unless menuOpen */}
+      <div style={{
+        position: 'fixed', top: 0, left: 0, height: '100vh',
+        zIndex: 50,
+        transform: menuOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.25s ease',
+      }}
+        className="mobile-sidebar"
+      >
+        <Sidebar page={page} setPage={p => { setPage(p); setMenuOpen(false) }} />
+      </div>
+
+      {/* Desktop sidebar */}
+      <div className="desktop-sidebar">
+        <Sidebar page={page} setPage={setPage} />
+      </div>
+
+      {/* Main content */}
       <main style={{
         flex: 1,
-        padding: '40px 48px',
         overflowY: 'auto',
         background: `
           radial-gradient(ellipse 80% 50% at 20% -10%, rgba(0,217,139,0.06) 0%, transparent 60%),
@@ -43,8 +73,28 @@ export default function App() {
           var(--bg)
         `
       }}>
-        {page === 'dashboard' && <Dashboard assets={assets} />}
-        {page === 'assets'    && <Assets assets={assets} setAssets={setAssets} />}
+        {/* Mobile top bar */}
+        <div className="mobile-topbar">
+          <button
+            onClick={() => setMenuOpen(true)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text)', padding: '4px',
+              display: 'flex', flexDirection: 'column', gap: 5,
+            }}
+          >
+            <span style={{ display: 'block', width: 22, height: 2, background: 'var(--text)', borderRadius: 2 }} />
+            <span style={{ display: 'block', width: 22, height: 2, background: 'var(--text)', borderRadius: 2 }} />
+            <span style={{ display: 'block', width: 22, height: 2, background: 'var(--text)', borderRadius: 2 }} />
+          </button>
+          <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18 }}>Wealthview</p>
+          <div style={{ width: 30 }} />
+        </div>
+
+        <div className="main-content">
+          {page === 'dashboard' && <Dashboard assets={assets} />}
+          {page === 'assets'    && <Assets assets={assets} setAssets={setAssets} />}
+        </div>
       </main>
     </div>
   )
