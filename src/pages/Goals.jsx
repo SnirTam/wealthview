@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../supabase'
 import { formatAmount } from './Dashboard'
 
 const SUGGESTIONS = [
@@ -247,63 +246,56 @@ function GoalCard({ goal, currentTotal, history, currency, onDelete }) {
 
 // ─── Goals ────────────────────────────────────────────────────────────────────
 
+function getStorageKey(user) {
+  return `wv_goals_${user?.id || 'local'}`
+}
+
 export default function Goals({ assets, user, netWorthHistory, currency = 'USD' }) {
-  const [goals, setGoals] = useState([])
+  const [goals, setGoalsState] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [dbError, setDbError] = useState(null)
 
   const total = assets.reduce((s, a) => s + (a.value || 0), 0)
 
+  // Load goals from localStorage on mount
   useEffect(() => {
-    if (!user) { setLoading(false); return }
-    supabase
-      .from('goals')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: true })
-      .then(({ data, error }) => {
-        if (error) { setDbError('Load error: ' + error.message); }
-        else { setGoals(data || []) }
-        setLoading(false)
-      })
+    try {
+      const stored = localStorage.getItem(getStorageKey(user))
+      setGoalsState(stored ? JSON.parse(stored) : [])
+    } catch {
+      setGoalsState([])
+    }
+    setLoading(false)
   }, [user])
 
-  async function addGoal(form) {
-    if (!user) return
-    setDbError(null)
-    const { data, error } = await supabase.from('goals').insert([{
-      user_id: user.id,
+  function persist(updated) {
+    setGoalsState(updated)
+    try {
+      localStorage.setItem(getStorageKey(user), JSON.stringify(updated))
+    } catch {}
+  }
+
+  function addGoal(form) {
+    const newGoal = {
+      id: Date.now(),
+      user_id: user?.id,
       name: form.name,
       target_amount: form.target,
       target_date: form.date || null,
       emoji: form.emoji,
-    }]).select('*')
-    if (error) { setDbError('Insert error: ' + error.message); return }
-    if (data?.[0]) setGoals(g => [...g, data[0]])
+      created_at: new Date().toISOString(),
+    }
+    persist([...goals, newGoal])
   }
 
-  async function deleteGoal(id) {
-    const { error } = await supabase.from('goals').delete().eq('id', id)
-    if (error) setDbError('Delete error: ' + error.message)
-    else setGoals(g => g.filter(x => x.id !== id))
+  function deleteGoal(id) {
+    persist(goals.filter(g => g.id !== id))
   }
 
   return (
     <div style={{ maxWidth: 1600 }}>
       {showModal && <AddGoalModal onAdd={addGoal} onClose={() => setShowModal(false)} />}
 
-      {dbError && (
-        <div style={{
-          background: 'var(--red-dim)', border: '1px solid var(--red)',
-          borderRadius: 10, padding: '12px 16px', marginBottom: 20,
-          fontSize: 13, color: 'var(--red)', fontFamily: 'var(--font-body)',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <span>⚠ {dbError}</span>
-          <button onClick={() => setDbError(null)} style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: 16 }}>×</button>
-        </div>
-      )}
 
       {/* Header */}
       <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36 }}>
