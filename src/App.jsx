@@ -13,7 +13,6 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [isPro, setIsPro] = useState(false)
 
-  // Check if user upgraded after Stripe redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('upgraded') === 'true') {
@@ -26,7 +25,6 @@ export default function App() {
     }
   }, [])
 
-  // Listen for auth changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
@@ -38,7 +36,6 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Load assets from Supabase when user logs in
   useEffect(() => {
     if (!user) return
     supabase
@@ -51,7 +48,6 @@ export default function App() {
       })
   }, [user])
 
-  // Save assets to Supabase whenever they change
   async function saveAssets(newAssets) {
     setAssets(newAssets)
     if (!user) return
@@ -94,7 +90,6 @@ export default function App() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
 
-      {/* Mobile overlay */}
       {menuOpen && (
         <div onClick={() => setMenuOpen(false)} style={{
           position: 'fixed', inset: 0,
@@ -102,7 +97,6 @@ export default function App() {
         }} />
       )}
 
-      {/* Mobile sidebar */}
       <div style={{
         position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 50,
         transform: menuOpen ? 'translateX(0)' : 'translateX(-100%)',
@@ -117,7 +111,6 @@ export default function App() {
         />
       </div>
 
-      {/* Desktop sidebar */}
       <div className="desktop-sidebar">
         <Sidebar
           page={page}
@@ -136,7 +129,6 @@ export default function App() {
           var(--bg)
         `
       }}>
-        {/* Mobile top bar */}
         <div className="mobile-topbar">
           <button onClick={() => setMenuOpen(true)} style={{
             background: 'none', border: 'none', cursor: 'pointer',
@@ -152,7 +144,13 @@ export default function App() {
         </div>
 
         <div className="main-content">
-          {page === 'dashboard' && <Dashboard assets={assets} />}
+          {page === 'dashboard' && (
+            <Dashboard
+              assets={assets}
+              isPro={isPro}
+              user={user}
+            />
+          )}
           {page === 'assets' && (
             <Assets
               assets={assets}

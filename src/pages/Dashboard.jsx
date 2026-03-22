@@ -4,6 +4,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts'
 import { useStockPrices } from '../useStockPrices'
+import { startCheckout } from '../stripe'
 
 const CATEGORY_COLORS = {
   'Stocks':      '#4d9fff',
@@ -92,7 +93,7 @@ function CustomTooltip({ active, payload, label }) {
   )
 }
 
-export default function Dashboard({ assets }) {
+export default function Dashboard({ assets, isPro, user }) {
   const [cryptoPrices, setCryptoPrices] = useState({})
   const stockPrices = useStockPrices(assets)
 
@@ -144,18 +145,54 @@ export default function Dashboard({ assets }) {
 
       {/* Page header */}
       <div className="fade-up" style={{ marginBottom: 36 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-          <div style={{
-            width: 8, height: 8, borderRadius: '50%',
-            background: 'var(--green)', animation: 'pulse-green 2s infinite',
-          }} />
-          <span style={{
-            fontSize: 10, color: 'var(--green)', fontWeight: 500,
-            letterSpacing: 1.5, textTransform: 'uppercase', fontFamily: 'var(--font-body)',
-          }}>
-            Live
-          </span>
+
+        {/* Top row: Live indicator + Upgrade button */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: 'var(--green)', animation: 'pulse-green 2s infinite',
+            }} />
+            <span style={{
+              fontSize: 10, color: 'var(--green)', fontWeight: 500,
+              letterSpacing: 1.5, textTransform: 'uppercase', fontFamily: 'var(--font-body)',
+            }}>
+              Live
+            </span>
+          </div>
+
+          {/* Upgrade button — only show for free users */}
+          {!isPro && (
+            <button
+              onClick={() => startCheckout(user?.email)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                background: 'linear-gradient(135deg, var(--green), var(--teal))',
+                color: '#0a0a0f', padding: '8px 18px', borderRadius: 20,
+                fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer',
+                fontFamily: 'var(--font-display)', letterSpacing: 0.5,
+                transition: 'opacity 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              ✦ Upgrade to Pro — $9.99/mo
+            </button>
+          )}
+
+          {/* Pro badge */}
+          {isPro && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'rgba(0,217,139,0.1)', color: 'var(--green)',
+              padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+              border: '1px solid rgba(0,217,139,0.2)', fontFamily: 'var(--font-body)',
+            }}>
+              ✦ Pro plan
+            </div>
+          )}
         </div>
+
         <h1 style={{ fontSize: 36, fontWeight: 600, lineHeight: 1.1, fontFamily: 'var(--font-display)', letterSpacing: 0.5 }}>
           Good day 👋
         </h1>
