@@ -529,7 +529,7 @@ export default function Dashboard({
               {getGreeting(firstName)}
             </h1>
             <p style={{ fontSize: 14, color: 'var(--muted2)', marginTop: 8, fontFamily: 'var(--font-body)', fontWeight: 300 }}>
-              Welcome to Wealthview — let's get started.
+              Welcome to WealthView — let's get started.
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 4 }}>

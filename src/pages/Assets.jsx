@@ -129,7 +129,7 @@ export default function Assets({ assets, setAssets, isPro, currency = 'USD', use
     const doc = new jsPDF()
     doc.setFontSize(20)
     doc.setTextColor(0, 217, 139)
-    doc.text('Wealthview — Portfolio Summary', 14, 20)
+    doc.text('WealthView — Portfolio Summary', 14, 20)
     doc.setFontSize(10)
     doc.setTextColor(120, 120, 140)
     doc.text(`${user?.email || ''} · ${new Date().toLocaleDateString()}`, 14, 28)

@@ -97,7 +97,7 @@ function Step1({ firstName, onNext, onSkip }) {
         textAlign: 'center', fontSize: 24, fontFamily: 'var(--font-display)',
         fontWeight: 700, marginBottom: 10, color: 'var(--text)',
       }}>
-        Welcome to Wealthview, {firstName}!
+        Welcome to WealthView, {firstName}!
       </h2>
       <p style={{ textAlign: 'center', color: 'var(--muted2)', fontSize: 15, marginBottom: 32, lineHeight: 1.5 }}>
         Let's build your complete financial picture in 2 minutes.

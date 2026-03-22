@@ -274,7 +274,7 @@ export default function Landing({ onGetStarted, onSignIn }) {
           <span style={{
             fontFamily: 'var(--font-display)', fontWeight: 700,
             fontSize: 17, letterSpacing: 0.2, color: '#eeeef5',
-          }}>Wealthview</span>
+          }}>WealthView</span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -588,7 +588,7 @@ export default function Landing({ onGetStarted, onSignIn }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 13, fontWeight: 800, color: '#09090f', fontFamily: 'var(--font-display)',
           }}>W</div>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: '#eeeef5' }}>Wealthview</span>
+          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: '#eeeef5' }}>WealthView</span>
         </div>
 
         <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -611,7 +611,7 @@ export default function Landing({ onGetStarted, onSignIn }) {
         </div>
 
         <p style={{ fontSize: 12, color: '#5a5a70', fontFamily: 'var(--font-body)', width: '100%', textAlign: 'center', marginTop: 4 }}>
-          © 2026 Wealthview. Built for serious savers.
+          © 2026 WealthView. Built for serious savers.
         </p>
       </footer>
 

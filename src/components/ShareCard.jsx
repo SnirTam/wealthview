@@ -148,7 +148,7 @@ export default function ShareCard({ total, currency, user, onClose }) {
               fontSize: 17, fontWeight: 700, color: '#0a0a0f', flexShrink: 0,
             }}>W</div>
             <span style={{ fontSize: 16, fontWeight: 700, color: '#f0f0f5', letterSpacing: 0.3 }}>
-              Wealthview
+              WealthView
             </span>
           </div>
 
@@ -181,7 +181,7 @@ export default function ShareCard({ total, currency, user, onClose }) {
 
           {/* Watermark */}
           <p style={{ fontSize: 10, color: '#6b6b80', letterSpacing: 0.3 }}>
-            Tracked with Wealthview · wealthview.app
+            Tracked with WealthView · wealthview.app
           </p>
         </div>
 

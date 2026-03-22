@@ -301,7 +301,7 @@ export default function App() {
           animation: 'pulse-green 1.5s infinite',
         }}>W</div>
         <p style={{ fontSize: 13, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
-          Loading Wealthview…
+          Loading WealthView…
         </p>
       </div>
     )
@@ -375,7 +375,7 @@ export default function App() {
               <span style={{ display: 'block', width: 22, height: 2, background: '#f0f0f5', borderRadius: 2 }} />
               <span style={{ display: 'block', width: 22, height: 2, background: '#f0f0f5', borderRadius: 2 }} />
             </button>
-            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: '#f0f0f5' }}>Wealthview</p>
+            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: '#f0f0f5' }}>WealthView</p>
             {isPro ? (
               <button
                 onClick={() => setShowAddAsset(true)}

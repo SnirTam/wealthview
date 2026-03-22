@@ -119,7 +119,7 @@ export default function Sidebar({ page, setPage, onSignOut, user, isPro, theme, 
           }}>W</div>
           <div>
             <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, letterSpacing: 0.3 }}>
-              Wealthview
+              WealthView
             </p>
             <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1, fontFamily: 'var(--font-body)' }}>
               Your financial picture
