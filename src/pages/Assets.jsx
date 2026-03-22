@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatAmount } from './Dashboard'
+import AssetLogo from '../components/AssetLogo'
 
 const CATEGORY_COLORS = {
   'Stocks':      '#4d9fff',
@@ -244,14 +245,7 @@ export default function Assets({ assets, setAssets, isPro, freeLimit, currency =
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{
-                  width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                  background: CATEGORY_COLORS[asset.category] + '18',
-                  border: '1px solid ' + CATEGORY_COLORS[asset.category] + '35',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
-                }}>
-                  {CATEGORY_ICONS[asset.category]}
-                </div>
+                <AssetLogo ticker={asset.ticker} category={asset.category} size={38} />
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 500, fontFamily: 'var(--font-body)' }}>{asset.name}</p>
                   {asset.ticker && (

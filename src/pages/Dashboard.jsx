@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell
@@ -6,6 +6,7 @@ import {
 import { useStockPrices } from '../useStockPrices'
 import { startCheckout } from '../stripe'
 import { supabase } from '../supabase'
+import AssetLogo from '../components/AssetLogo'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -51,14 +52,25 @@ export function formatAmount(usdValue, currency = 'USD') {
   return c.symbol + (usdValue * c.rate).toLocaleString(undefined, { maximumFractionDigits: 0 })
 }
 
-// ─── Greeting ─────────────────────────────────────────────────────────────────
+// ─── Greeting + name ─────────────────────────────────────────────────────────
 
-function getGreeting() {
+function getFirstName(user) {
+  const meta = user?.user_metadata
+  if (meta?.full_name) return meta.full_name.split(' ')[0]
+  if (meta?.name) return meta.name.split(' ')[0]
+  if (user?.email) {
+    const local = user.email.split('@')[0]
+    const part = local.split(/[._\-+]/)[0]
+    return part.charAt(0).toUpperCase() + part.slice(1)
+  }
+  return ''
+}
+
+function getGreeting(name = '') {
   const h = new Date().getHours()
-  if (h >= 5  && h < 12) return 'Good morning 🌅'
-  if (h >= 12 && h < 18) return 'Good afternoon ☀️'
-  if (h >= 18 && h < 22) return 'Good evening 🌆'
-  return 'Good night 🌙'
+  const base = h >= 5 && h < 12 ? 'Good morning' : h >= 12 && h < 18 ? 'Good afternoon' : h >= 18 && h < 22 ? 'Good evening' : 'Good night'
+  const emoji = h >= 5 && h < 12 ? '🌅' : h >= 12 && h < 18 ? '☀️' : h >= 18 && h < 22 ? '🌆' : '🌙'
+  return name ? `${base}, ${name} ${emoji}` : `${base} ${emoji}`
 }
 
 // ─── History helpers (Supabase format) ───────────────────────────────────────
@@ -104,10 +116,10 @@ function calcSixMonthChange(history, currentTotal) {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function AddAssetModal({ onAdd, onClose, isPro, assetsCount, freeLimit, userEmail }) {
-  const [category, setCategory] = useState('Stocks')
-  const [ticker, setTicker] = useState('')
-  const [name, setName] = useState('')
+function AddAssetModal({ onAdd, onClose, isPro, assetsCount, freeLimit, userEmail, prefill }) {
+  const [category, setCategory] = useState(prefill?.category || 'Stocks')
+  const [ticker, setTicker] = useState(prefill?.ticker || '')
+  const [name, setName] = useState(prefill?.name || '')
   const [value, setValue] = useState('')
   const [suggestions, setSuggestions] = useState([])
   const atLimit = !isPro && assetsCount >= freeLimit
@@ -369,11 +381,18 @@ function EmptyState({ onAdd }) {
 export default function Dashboard({
   assets, isPro, user, showAddAsset, setShowAddAsset,
   saveAssets, freeLimit, setPage, netWorthHistory,
-  currency, setCurrency,
+  currency, setCurrency, prefillAsset, onPrefillUsed,
 }) {
   const [cryptoPrices, setCryptoPrices] = useState({})
   const { prices: stockPrices, lastUpdated: stockLastUpdated } = useStockPrices(assets)
   const [cryptoLastUpdated, setCryptoLastUpdated] = useState(null)
+  const [clock, setClock] = useState(new Date())
+  useEffect(() => {
+    const t = setInterval(() => setClock(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  const firstName = getFirstName(user)
 
   const total = assets.reduce((sum, a) => sum + (a.value || 0), 0)
 
@@ -486,18 +505,31 @@ export default function Dashboard({
     ? '· Updated ' + lastUpdated.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
     : null
 
+  const dateStr = clock.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  const timeStr = clock.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+
+  function handleCloseModal() {
+    setShowAddAsset(false)
+    onPrefillUsed?.()
+  }
+
   // Empty state
   if (assets.length === 0) {
     return (
       <div style={{ maxWidth: 1100 }}>
         {showAddAsset && (
-          <AddAssetModal onAdd={handleAddAsset} onClose={() => setShowAddAsset(false)}
-            isPro={isPro} assetsCount={0} freeLimit={freeLimit} userEmail={user?.email} />
+          <AddAssetModal onAdd={handleAddAsset} onClose={handleCloseModal}
+            isPro={isPro} assetsCount={0} freeLimit={freeLimit} userEmail={user?.email}
+            prefill={prefillAsset} key={prefillAsset?.ticker || 'modal'} />
         )}
         <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36 }}>
           <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+              <p style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>{dateStr}</p>
+              <p style={{ fontSize: 12, color: 'var(--muted)', fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }}>{timeStr}</p>
+            </div>
             <h1 style={{ fontSize: 32, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
-              {getGreeting()}
+              {getGreeting(firstName)}
             </h1>
             <p style={{ fontSize: 14, color: 'var(--muted2)', marginTop: 8, fontFamily: 'var(--font-body)', fontWeight: 300 }}>
               Welcome to Wealthview — let's get started.
@@ -516,15 +548,16 @@ export default function Dashboard({
     <div style={{ maxWidth: 1100 }}>
 
       {showAddAsset && (
-        <AddAssetModal onAdd={handleAddAsset} onClose={() => setShowAddAsset(false)}
-          isPro={isPro} assetsCount={assets.length} freeLimit={freeLimit} userEmail={user?.email} />
+        <AddAssetModal onAdd={handleAddAsset} onClose={handleCloseModal}
+          isPro={isPro} assetsCount={assets.length} freeLimit={freeLimit} userEmail={user?.email}
+          prefill={prefillAsset} key={prefillAsset?.ticker || 'modal'} />
       )}
 
       {/* ── Page header ── */}
       <div className="fade-up" style={{ marginBottom: 36 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%',
                 background: 'var(--green)', animation: 'pulse-green 2s infinite' }} />
               <span style={{ fontSize: 10, color: 'var(--green)', fontWeight: 500,
@@ -534,9 +567,15 @@ export default function Dashboard({
                   {lastUpdatedLabel}
                 </span>
               )}
+              <span style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-body)', marginLeft: 4 }}>
+                {dateStr}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-body)', fontVariantNumeric: 'tabular-nums' }}>
+                · {timeStr}
+              </span>
             </div>
             <h1 style={{ fontSize: 32, fontWeight: 600, lineHeight: 1.1, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
-              {getGreeting()}
+              {getGreeting(firstName)}
             </h1>
             <p style={{ fontSize: 14, color: 'var(--muted2)', marginTop: 8, fontFamily: 'var(--font-body)', fontWeight: 300 }}>
               Here's your complete financial picture.
@@ -684,12 +723,7 @@ export default function Dashboard({
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
               <div style={{ width: 28, fontSize: 12, color: 'var(--muted)', fontWeight: 500, fontFamily: 'var(--font-display)' }}>#{i + 1}</div>
-              <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                background: CATEGORY_COLORS[asset.category] + '22',
-                border: '1px solid ' + CATEGORY_COLORS[asset.category] + '44',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, marginRight: 14 }}>
-                {CATEGORY_ICONS[asset.category]}
-              </div>
+              <AssetLogo ticker={asset.ticker} category={asset.category} size={36} style={{ marginRight: 14 }} />
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: 14, fontWeight: 500, fontFamily: 'var(--font-body)' }}>{asset.name}</p>
                 <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, fontFamily: 'var(--font-body)' }}>

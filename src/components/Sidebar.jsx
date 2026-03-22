@@ -1,25 +1,67 @@
-const NAV = [
+const NAV_GROUPS = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity="0.9"/>
-        <rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity="0.5"/>
-        <rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity="0.5"/>
-        <rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity="0.9"/>
-      </svg>
-    )
+    label: 'Overview',
+    items: [
+      {
+        id: 'dashboard',
+        label: 'Dashboard',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity="0.9"/>
+            <rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor" opacity="0.5"/>
+            <rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity="0.5"/>
+            <rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor" opacity="0.9"/>
+          </svg>
+        ),
+      },
+      {
+        id: 'analytics',
+        label: 'Analytics',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="1" y="9" width="3" height="6" rx="1" fill="currentColor" opacity="0.5"/>
+            <rect x="6" y="5" width="3" height="10" rx="1" fill="currentColor" opacity="0.8"/>
+            <rect x="11" y="1" width="3" height="14" rx="1" fill="currentColor"/>
+          </svg>
+        ),
+      },
+    ],
   },
   {
-    id: 'assets',
-    label: 'Assets',
-    icon: (
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/>
-        <path d="M8 4.5V8l2.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-      </svg>
-    )
+    label: 'Manage',
+    items: [
+      {
+        id: 'assets',
+        label: 'Assets',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M8 4.5V8l2.5 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        ),
+      },
+      {
+        id: 'goals',
+        label: 'Goals',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/>
+            <circle cx="8" cy="8" r="3.5" stroke="currentColor" strokeWidth="1.2" opacity="0.6"/>
+            <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+          </svg>
+        ),
+      },
+      {
+        id: 'watchlist',
+        label: 'Watchlist',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M1 8C1 8 3.5 3 8 3s7 5 7 5-2.5 5-7 5-7-5-7-5z" stroke="currentColor" strokeWidth="1.5"/>
+            <circle cx="8" cy="8" r="2" fill="currentColor" opacity="0.8"/>
+          </svg>
+        ),
+      },
+    ],
   },
 ]
 
@@ -45,7 +87,7 @@ export default function Sidebar({ page, setPage, onSignOut, user, isPro }) {
     }}>
 
       {/* Logo */}
-      <div style={{ padding: '8px 12px', marginBottom: 40 }}>
+      <div style={{ padding: '8px 12px', marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 32, height: 32, borderRadius: 10,
@@ -65,41 +107,47 @@ export default function Sidebar({ page, setPage, onSignOut, user, isPro }) {
         </div>
       </div>
 
-      {/* Nav */}
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-        <p style={{
-          fontSize: 10, fontWeight: 500, color: 'var(--muted)',
-          letterSpacing: 1.5, textTransform: 'uppercase',
-          padding: '0 12px', marginBottom: 8, fontFamily: 'var(--font-body)',
-        }}>
-          Menu
-        </p>
-        {NAV.map(item => {
-          const active = page === item.id
-          return (
-            <button key={item.id} onClick={() => setPage(item.id)} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 12px', borderRadius: 10,
-              fontSize: 13, fontWeight: active ? 500 : 400,
-              fontFamily: 'var(--font-body)',
-              background: active ? 'rgba(0,217,139,0.1)' : 'transparent',
-              color: active ? 'var(--green)' : 'var(--muted2)',
-              border: active ? '1px solid rgba(0,217,139,0.2)' : '1px solid transparent',
-              cursor: 'pointer', textAlign: 'left', width: '100%',
-              transition: 'all 0.15s ease',
+      {/* Nav groups */}
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+        {NAV_GROUPS.map(group => (
+          <div key={group.label}>
+            <p style={{
+              fontSize: 10, fontWeight: 500, color: 'var(--muted)',
+              letterSpacing: 1.5, textTransform: 'uppercase',
+              padding: '0 12px', marginBottom: 6, fontFamily: 'var(--font-body)',
             }}>
-              <span style={{ opacity: active ? 1 : 0.6 }}>{item.icon}</span>
-              {item.label}
-              {active && (
-                <div style={{
-                  marginLeft: 'auto', width: 6, height: 6,
-                  borderRadius: '50%', background: 'var(--green)',
-                  animation: 'pulse-green 2s infinite',
-                }} />
-              )}
-            </button>
-          )
-        })}
+              {group.label}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {group.items.map(item => {
+                const active = page === item.id
+                return (
+                  <button key={item.id} onClick={() => setPage(item.id)} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 12px', borderRadius: 10,
+                    fontSize: 13, fontWeight: active ? 500 : 400,
+                    fontFamily: 'var(--font-body)',
+                    background: active ? 'rgba(0,217,139,0.1)' : 'transparent',
+                    color: active ? 'var(--green)' : 'var(--muted2)',
+                    border: active ? '1px solid rgba(0,217,139,0.2)' : '1px solid transparent',
+                    cursor: 'pointer', textAlign: 'left', width: '100%',
+                    transition: 'all 0.15s ease',
+                  }}>
+                    <span style={{ opacity: active ? 1 : 0.6 }}>{item.icon}</span>
+                    {item.label}
+                    {active && (
+                      <div style={{
+                        marginLeft: 'auto', width: 6, height: 6,
+                        borderRadius: '50%', background: 'var(--green)',
+                        animation: 'pulse-green 2s infinite',
+                      }} />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Bottom section */}
@@ -162,8 +210,7 @@ export default function Sidebar({ page, setPage, onSignOut, user, isPro }) {
             width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
             background: 'linear-gradient(135deg, var(--purple), var(--blue))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 700, color: '#fff',
-            letterSpacing: 0.5,
+            fontSize: 11, fontWeight: 700, color: '#fff', letterSpacing: 0.5,
           }}>
             {getInitials(user?.email)}
           </div>

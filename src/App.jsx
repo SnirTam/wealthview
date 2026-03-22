@@ -3,12 +3,18 @@ import { supabase } from './supabase'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import Assets from './pages/Assets'
+import Analytics from './pages/Analytics'
+import Goals from './pages/Goals'
+import Watchlist from './pages/Watchlist'
 import Login from './pages/Login'
 import ErrorBoundary from './components/ErrorBoundary'
 
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
   assets: 'Assets',
+  analytics: 'Analytics',
+  goals: 'Goals',
+  watchlist: 'Watchlist',
 }
 
 function TopBar({ page, setShowAddAsset }) {
@@ -65,6 +71,7 @@ export default function App() {
   const [showAddAsset, setShowAddAsset] = useState(false)
   const [currency, setCurrencyState] = useState(() => localStorage.getItem('wv_currency') || 'USD')
   const [netWorthHistory, setNetWorthHistory] = useState([])
+  const [watchlistPrefill, setWatchlistPrefill] = useState(null)
 
   function setCurrency(c) {
     setCurrencyState(c)
@@ -117,7 +124,7 @@ export default function App() {
     setAssetsLoading(true)
 
     const sixMonthsAgo = new Date()
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 12)
 
     Promise.all([
       supabase.from('assets').select('*').eq('user_id', user.id),
@@ -299,6 +306,8 @@ export default function App() {
                     netWorthHistory={netWorthHistory}
                     currency={currency}
                     setCurrency={setCurrency}
+                    prefillAsset={watchlistPrefill}
+                    onPrefillUsed={() => setWatchlistPrefill(null)}
                   />
                 )}
                 {page === 'assets' && (
@@ -308,6 +317,31 @@ export default function App() {
                     isPro={isPro}
                     freeLimit={FREE_LIMIT}
                     currency={currency}
+                  />
+                )}
+                {page === 'analytics' && (
+                  <Analytics
+                    assets={assets}
+                    netWorthHistory={netWorthHistory}
+                    currency={currency}
+                  />
+                )}
+                {page === 'goals' && (
+                  <Goals
+                    assets={assets}
+                    user={user}
+                    netWorthHistory={netWorthHistory}
+                    currency={currency}
+                  />
+                )}
+                {page === 'watchlist' && (
+                  <Watchlist
+                    currency={currency}
+                    onAddToPortfolio={item => {
+                      setWatchlistPrefill(item)
+                      setPage('dashboard')
+                      setShowAddAsset(true)
+                    }}
                   />
                 )}
               </>
