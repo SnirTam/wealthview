@@ -4,15 +4,12 @@ export const stripePromise = loadStripe('pk_test_51TDnHXJxFIiqk8Ln8COX6Ui4fLo9WS
 
 export async function startCheckout(email) {
   try {
-    console.log('Starting checkout for', email)
-    const res = await fetch('/api/create-checkout-session.cjs', {
+    const res = await fetch('/api/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email: email || '' }),
     })
-    console.log('Response status:', res.status)
     const data = await res.json()
-    console.log('Response data:', data)
     if (data.url) window.location.href = data.url
     else alert('Error: ' + JSON.stringify(data))
   } catch (err) {
