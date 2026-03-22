@@ -474,31 +474,6 @@ export default function Dashboard({
     </select>
   )
 
-  // ── Upgrade / Pro badge ──────────────────────────────────────────────────
-  const upgradeBtn = !isPro ? (
-    <button
-      onClick={() => startCheckout(user?.email)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        background: 'linear-gradient(135deg, var(--green), var(--teal))',
-        color: '#0a0a0f', padding: '7px 18px', borderRadius: 20,
-        fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer',
-        fontFamily: 'var(--font-display)', letterSpacing: 0.5,
-        boxShadow: '0 0 18px rgba(0,217,139,0.25)', transition: 'opacity 0.15s',
-        whiteSpace: 'nowrap',
-      }}
-      onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-    >✦ Upgrade to Pro</button>
-  ) : (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 6,
-      background: 'rgba(0,217,139,0.08)', color: 'var(--green)',
-      padding: '7px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-      border: '1px solid rgba(0,217,139,0.2)', fontFamily: 'var(--font-body)',
-      whiteSpace: 'nowrap',
-    }}>✦ Pro</div>
-  )
 
   // ── Last updated label ───────────────────────────────────────────────────
   const lastUpdatedLabel = lastUpdated
@@ -516,7 +491,7 @@ export default function Dashboard({
   // Empty state
   if (assets.length === 0) {
     return (
-      <div style={{ maxWidth: 1100 }}>
+      <div style={{ maxWidth: 1600 }}>
         {showAddAsset && (
           <AddAssetModal onAdd={handleAddAsset} onClose={handleCloseModal}
             isPro={isPro} assetsCount={0} freeLimit={freeLimit} userEmail={user?.email}
@@ -536,7 +511,20 @@ export default function Dashboard({
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 4 }}>
-            {currencySelector}{upgradeBtn}
+            {currencySelector}
+            <button
+              onClick={() => setShowAddAsset(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'var(--bg2)', color: 'var(--text)',
+                padding: '7px 16px', borderRadius: 8,
+                fontSize: 12, fontWeight: 500, border: '1px solid var(--border2)',
+                cursor: 'pointer', fontFamily: 'var(--font-body)',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.background = 'var(--bg3)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'var(--bg2)' }}
+            >+ Add asset</button>
           </div>
         </div>
         <EmptyState onAdd={() => setShowAddAsset(true)} />
@@ -545,7 +533,7 @@ export default function Dashboard({
   }
 
   return (
-    <div style={{ maxWidth: 1100 }}>
+    <div style={{ maxWidth: 1600 }}>
 
       {showAddAsset && (
         <AddAssetModal onAdd={handleAddAsset} onClose={handleCloseModal}
@@ -582,7 +570,20 @@ export default function Dashboard({
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 4 }}>
-            {currencySelector}{upgradeBtn}
+            {currencySelector}
+            <button
+              onClick={() => setShowAddAsset(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'var(--bg2)', color: 'var(--text)',
+                padding: '7px 16px', borderRadius: 8,
+                fontSize: 12, fontWeight: 500, border: '1px solid var(--border2)',
+                cursor: 'pointer', fontFamily: 'var(--font-body)',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.background = 'var(--bg3)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'var(--bg2)' }}
+            >+ Add asset</button>
           </div>
         </div>
       </div>

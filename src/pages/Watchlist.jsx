@@ -230,7 +230,7 @@ export default function Watchlist({ currency = 'USD', onAddToPortfolio }) {
   }
 
   return (
-    <div style={{ maxWidth: 1100 }}>
+    <div style={{ maxWidth: 1600 }}>
 
       {/* Header */}
       <div className="fade-up" style={{ marginBottom: 32 }}>

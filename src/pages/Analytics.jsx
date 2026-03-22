@@ -142,7 +142,7 @@ export default function Analytics({ assets, netWorthHistory, currency = 'USD' })
   }
 
   return (
-    <div style={{ maxWidth: 1100 }}>
+    <div style={{ maxWidth: 1600 }}>
 
       {/* Header */}
       <div className="fade-up" style={{ marginBottom: 32 }}>

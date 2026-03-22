@@ -108,7 +108,7 @@ export default function Assets({ assets, setAssets, isPro, freeLimit, currency =
   }
 
   return (
-    <div style={{ maxWidth: 1100 }}>
+    <div style={{ maxWidth: 1600 }}>
 
       {editingAsset && (
         <EditValueModal
