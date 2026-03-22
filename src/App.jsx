@@ -12,6 +12,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
   const [isPro, setIsPro] = useState(false)
+  const [showAddAsset, setShowAddAsset] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -149,6 +150,11 @@ export default function App() {
               assets={assets}
               isPro={isPro}
               user={user}
+              showAddAsset={showAddAsset}
+              setShowAddAsset={setShowAddAsset}
+              saveAssets={saveAssets}
+              freeLimit={FREE_LIMIT}
+              setPage={setPage}
             />
           )}
           {page === 'assets' && (

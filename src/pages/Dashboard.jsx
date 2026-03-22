@@ -14,14 +14,237 @@ const CATEGORY_COLORS = {
   'Cash':        '#6b6b80',
 }
 
-const HISTORY = [
-  { month: 'Oct', value: 380000 },
-  { month: 'Nov', value: 392000 },
-  { month: 'Dec', value: 388000 },
-  { month: 'Jan', value: 401000 },
-  { month: 'Feb', value: 419000 },
-  { month: 'Mar', value: 404400 },
+const CATEGORY_ICONS = {
+  'Stocks': '📈', 'Crypto': '₿', 'Real Estate': '🏠', 'Retirement': '🏦', 'Cash': '💵'
+}
+
+const POPULAR_STOCKS = [
+  { ticker: 'AAPL', name: 'Apple' }, { ticker: 'NVDA', name: 'NVIDIA' },
+  { ticker: 'MSFT', name: 'Microsoft' }, { ticker: 'GOOGL', name: 'Google' },
+  { ticker: 'AMZN', name: 'Amazon' }, { ticker: 'TSLA', name: 'Tesla' },
+  { ticker: 'META', name: 'Meta' }, { ticker: 'JPM', name: 'JPMorgan' },
+  { ticker: 'V', name: 'Visa' }, { ticker: 'SPY', name: 'S&P 500 ETF' },
+  { ticker: 'QQQ', name: 'Nasdaq ETF' },
 ]
+
+const POPULAR_CRYPTO = [
+  { ticker: 'bitcoin', name: 'Bitcoin (BTC)' }, { ticker: 'ethereum', name: 'Ethereum (ETH)' },
+  { ticker: 'solana', name: 'Solana (SOL)' }, { ticker: 'ripple', name: 'XRP' },
+  { ticker: 'dogecoin', name: 'Dogecoin (DOGE)' }, { ticker: 'cardano', name: 'Cardano (ADA)' },
+]
+
+const HISTORY = [
+  { month: 'Oct', value: 380000 }, { month: 'Nov', value: 392000 },
+  { month: 'Dec', value: 388000 }, { month: 'Jan', value: 401000 },
+  { month: 'Feb', value: 419000 }, { month: 'Mar', value: 404400 },
+]
+
+const CATEGORIES = Object.keys(CATEGORY_COLORS)
+
+function AddAssetModal({ onAdd, onClose, isPro, assetsCount, freeLimit }) {
+  const [category, setCategory] = useState('Stocks')
+  const [ticker, setTicker] = useState('')
+  const [name, setName] = useState('')
+  const [value, setValue] = useState('')
+  const [suggestions, setSuggestions] = useState([])
+  const atLimit = !isPro && assetsCount >= freeLimit
+
+  const inputStyle = {
+    padding: '10px 14px', borderRadius: 10,
+    border: '1px solid var(--border2)',
+    background: 'var(--bg3)', color: 'var(--text)',
+    fontSize: 14, outline: 'none', fontFamily: 'var(--font-body)', width: '100%',
+  }
+
+  function handleTickerInput(val) {
+    setTicker(val.toUpperCase())
+    const matches = POPULAR_STOCKS.filter(s =>
+      s.ticker.startsWith(val.toUpperCase()) || s.name.toLowerCase().startsWith(val.toLowerCase())
+    )
+    setSuggestions(matches.slice(0, 4))
+  }
+
+  function handleCryptoInput(val) {
+    setTicker(val)
+    const matches = POPULAR_CRYPTO.filter(s =>
+      s.name.toLowerCase().includes(val.toLowerCase()) || s.ticker.toLowerCase().startsWith(val.toLowerCase())
+    )
+    setSuggestions(matches.slice(0, 4))
+  }
+
+  function selectSuggestion(s) {
+    setTicker(s.ticker)
+    setName(s.name)
+    setSuggestions([])
+  }
+
+  function handleAdd() {
+    if (!value) return
+    if (category === 'Stocks' && !ticker) return
+    if (category === 'Crypto' && !ticker) return
+    if (['Real Estate', 'Retirement', 'Cash'].includes(category) && !name) return
+
+    const finalName = category === 'Stocks'
+      ? (POPULAR_STOCKS.find(s => s.ticker === ticker)?.name || ticker) + ' (' + ticker + ')'
+      : category === 'Crypto'
+        ? (POPULAR_CRYPTO.find(s => s.ticker === ticker)?.name || ticker)
+        : name
+
+    onAdd({
+      id: Date.now(), name: finalName, category,
+      value: parseFloat(value),
+      ticker: ['Stocks', 'Crypto'].includes(category) ? ticker : null,
+    })
+    onClose()
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 100,
+      background: 'rgba(0,0,0,0.7)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 20,
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: 'var(--bg2)', borderRadius: 20, padding: '28px',
+        border: '1px solid var(--border2)', width: '100%', maxWidth: 480,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <p style={{ fontWeight: 600, fontSize: 18, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
+            Add asset
+          </p>
+          <button onClick={onClose} style={{
+            background: 'transparent', border: 'none', color: 'var(--muted)',
+            fontSize: 20, cursor: 'pointer',
+          }}>×</button>
+        </div>
+
+        {atLimit ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>✦</div>
+            <p style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-display)', marginBottom: 8 }}>
+              Upgrade to Pro
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--muted2)', marginBottom: 20, fontFamily: 'var(--font-body)' }}>
+              You've used all {freeLimit} free assets. Upgrade for unlimited.
+            </p>
+            <button onClick={() => startCheckout()} style={{
+              background: 'linear-gradient(135deg, var(--green), var(--teal))',
+              color: '#0a0a0f', padding: '10px 24px', borderRadius: 10,
+              fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font-display)',
+            }}>
+              Upgrade for $9.99/month →
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Category selector */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 20 }}>
+              {CATEGORIES.map(cat => (
+                <button key={cat} onClick={() => { setCategory(cat); setTicker(''); setName(''); setSuggestions([]) }} style={{
+                  padding: '10px 4px', borderRadius: 10, fontSize: 11,
+                  fontWeight: category === cat ? 600 : 400,
+                  background: category === cat ? CATEGORY_COLORS[cat] + '20' : 'var(--bg3)',
+                  color: category === cat ? CATEGORY_COLORS[cat] : 'var(--muted)',
+                  border: category === cat ? '1px solid ' + CATEGORY_COLORS[cat] + '50' : '1px solid var(--border)',
+                  cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'var(--font-body)',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                }}>
+                  <span style={{ fontSize: 18 }}>{CATEGORY_ICONS[cat]}</span>
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {category === 'Stocks' && (
+                <div style={{ position: 'relative' }}>
+                  <input placeholder="Ticker (e.g. AAPL)" value={ticker}
+                    onChange={e => handleTickerInput(e.target.value)} style={inputStyle} />
+                  {suggestions.length > 0 && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+                      background: 'var(--bg3)', border: '1px solid var(--border2)',
+                      borderRadius: 10, marginTop: 4, overflow: 'hidden',
+                    }}>
+                      {suggestions.map(s => (
+                        <div key={s.ticker} onClick={() => selectSuggestion(s)} style={{
+                          padding: '10px 14px', cursor: 'pointer', fontSize: 13,
+                          display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-body)',
+                        }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontWeight: 600, color: 'var(--blue)' }}>{s.ticker}</span>
+                          <span style={{ color: 'var(--muted)' }}>{s.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {category === 'Crypto' && (
+                <div style={{ position: 'relative' }}>
+                  <input placeholder="Search crypto (e.g. Bitcoin)" value={ticker}
+                    onChange={e => handleCryptoInput(e.target.value)} style={inputStyle} />
+                  {suggestions.length > 0 && (
+                    <div style={{
+                      position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+                      background: 'var(--bg3)', border: '1px solid var(--border2)',
+                      borderRadius: 10, marginTop: 4, overflow: 'hidden',
+                    }}>
+                      {suggestions.map(s => (
+                        <div key={s.ticker} onClick={() => selectSuggestion(s)} style={{
+                          padding: '10px 14px', cursor: 'pointer', fontSize: 13,
+                          display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-body)',
+                        }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontWeight: 600, color: 'var(--amber)' }}>{s.name}</span>
+                          <span style={{ color: 'var(--muted)' }}>{s.ticker}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {['Real Estate', 'Retirement', 'Cash'].includes(category) && (
+                <input
+                  placeholder={
+                    category === 'Real Estate' ? 'Property description' :
+                    category === 'Retirement' ? 'Account name (e.g. Fidelity 401k)' :
+                    'Account name (e.g. Chase Checking)'
+                  }
+                  value={name} onChange={e => setName(e.target.value)} style={inputStyle}
+                />
+              )}
+
+              <input
+                placeholder="Value ($)" type="number" value={value}
+                onChange={e => setValue(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAdd()}
+                style={inputStyle}
+              />
+
+              <button onClick={handleAdd} style={{
+                background: 'linear-gradient(135deg, var(--green), var(--teal))',
+                color: '#0a0a0f', padding: '12px', borderRadius: 10,
+                fontSize: 14, fontWeight: 700, border: 'none', cursor: 'pointer',
+                fontFamily: 'var(--font-display)', letterSpacing: 0.5,
+              }}>
+                Add asset
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function StatCard({ label, value, sub, subColor, delay = 0, accent }) {
   return (
@@ -80,8 +303,7 @@ function CustomTooltip({ active, payload, label }) {
   return (
     <div style={{
       background: 'var(--bg3)', border: '1px solid var(--border2)',
-      borderRadius: 12, padding: '12px 16px',
-      backdropFilter: 'blur(10px)',
+      borderRadius: 12, padding: '12px 16px', backdropFilter: 'blur(10px)',
     }}>
       <p style={{ color: 'var(--muted)', marginBottom: 4, fontSize: 11, fontFamily: 'var(--font-body)', letterSpacing: 0.5 }}>
         {label}
@@ -93,7 +315,7 @@ function CustomTooltip({ active, payload, label }) {
   )
 }
 
-export default function Dashboard({ assets, isPro, user }) {
+export default function Dashboard({ assets, isPro, user, showAddAsset, setShowAddAsset, saveAssets, freeLimit, setPage }) {
   const [cryptoPrices, setCryptoPrices] = useState({})
   const stockPrices = useStockPrices(assets)
 
@@ -140,13 +362,26 @@ export default function Dashboard({ assets, isPro, user }) {
     return null
   }
 
+  function handleAddAsset(asset) {
+    saveAssets([...assets, asset])
+  }
+
   return (
     <div style={{ maxWidth: 1100 }}>
 
+      {/* Add asset modal */}
+      {showAddAsset && (
+        <AddAssetModal
+          onAdd={handleAddAsset}
+          onClose={() => setShowAddAsset(false)}
+          isPro={isPro}
+          assetsCount={assets.length}
+          freeLimit={freeLimit}
+        />
+      )}
+
       {/* Page header */}
       <div className="fade-up" style={{ marginBottom: 36 }}>
-
-        {/* Top row: Live indicator + Upgrade button */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
@@ -161,36 +396,55 @@ export default function Dashboard({ assets, isPro, user }) {
             </span>
           </div>
 
-          {/* Upgrade button — only show for free users */}
-          {!isPro && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {/* Add asset button */}
             <button
-              onClick={() => startCheckout(user?.email)}
+              onClick={() => setShowAddAsset(true)}
               style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                background: 'linear-gradient(135deg, var(--green), var(--teal))',
-                color: '#0a0a0f', padding: '8px 18px', borderRadius: 20,
-                fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer',
-                fontFamily: 'var(--font-display)', letterSpacing: 0.5,
-                transition: 'opacity 0.15s',
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'var(--bg2)', color: 'var(--text)',
+                padding: '8px 16px', borderRadius: 20,
+                fontSize: 12, fontWeight: 500, border: '1px solid var(--border2)',
+                cursor: 'pointer', fontFamily: 'var(--font-body)',
+                transition: 'all 0.15s',
               }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--border)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border2)'}
             >
-              ✦ Upgrade to Pro — $9.99/mo
+              + Add asset
             </button>
-          )}
 
-          {/* Pro badge */}
-          {isPro && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: 'rgba(0,217,139,0.1)', color: 'var(--green)',
-              padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-              border: '1px solid rgba(0,217,139,0.2)', fontFamily: 'var(--font-body)',
-            }}>
-              ✦ Pro plan
-            </div>
-          )}
+            {/* Upgrade button */}
+            {!isPro && (
+              <button
+                onClick={() => startCheckout(user?.email)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  background: 'linear-gradient(135deg, var(--green), var(--teal))',
+                  color: '#0a0a0f', padding: '8px 18px', borderRadius: 20,
+                  fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer',
+                  fontFamily: 'var(--font-display)', letterSpacing: 0.5,
+                  transition: 'opacity 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+              >
+                ✦ Upgrade to Pro — $9.99/mo
+              </button>
+            )}
+
+            {/* Pro badge */}
+            {isPro && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: 'rgba(0,217,139,0.1)', color: 'var(--green)',
+                padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                border: '1px solid rgba(0,217,139,0.2)', fontFamily: 'var(--font-body)',
+              }}>
+                ✦ Pro plan
+              </div>
+            )}
+          </div>
         </div>
 
         <h1 style={{ fontSize: 36, fontWeight: 600, lineHeight: 1.1, fontFamily: 'var(--font-display)', letterSpacing: 0.5 }}>
@@ -303,11 +557,36 @@ export default function Dashboard({ assets, isPro, user }) {
           padding: '20px 24px', borderBottom: '1px solid var(--border)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         }}>
-          <p style={{ fontWeight: 600, fontSize: 16, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>Top holdings</p>
-          <span style={{ fontSize: 11, color: 'var(--muted)', background: 'var(--bg3)', padding: '3px 10px', borderRadius: 20, border: '1px solid var(--border)', fontFamily: 'var(--font-body)' }}>
-            {assets.length} assets
-          </span>
+          <p style={{ fontWeight: 600, fontSize: 16, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
+            Top holdings
+          </p>
+          <button
+            onClick={() => setPage('assets')}
+            style={{
+              fontSize: 12, color: 'var(--green)', background: 'transparent',
+              border: 'none', cursor: 'pointer', fontFamily: 'var(--font-body)',
+              fontWeight: 500,
+            }}
+          >
+            View all →
+          </button>
         </div>
+
+        {topAssets.length === 0 && (
+          <div style={{ padding: '40px', textAlign: 'center' }}>
+            <p style={{ fontSize: 14, color: 'var(--muted)', fontFamily: 'var(--font-body)', marginBottom: 16 }}>
+              No assets yet. Add your first one!
+            </p>
+            <button onClick={() => setShowAddAsset(true)} style={{
+              background: 'linear-gradient(135deg, var(--green), var(--teal))',
+              color: '#0a0a0f', padding: '10px 24px', borderRadius: 10,
+              fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font-display)',
+            }}>
+              + Add your first asset
+            </button>
+          </div>
+        )}
 
         {topAssets.map((asset, i) => {
           const change = getLiveChange(asset)
@@ -335,7 +614,7 @@ export default function Dashboard({ assets, isPro, user }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 14, marginRight: 14,
               }}>
-                {asset.category === 'Stocks' ? '📈' : asset.category === 'Crypto' ? '₿' : asset.category === 'Real Estate' ? '🏠' : asset.category === 'Retirement' ? '🏦' : '💵'}
+                {CATEGORY_ICONS[asset.category]}
               </div>
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: 14, fontWeight: 500, fontFamily: 'var(--font-body)' }}>{asset.name}</p>
