@@ -5,6 +5,8 @@ export default function Login() {
   const [mode, setMode] = useState('login') // 'login' | 'signup' | 'forgot'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -18,7 +20,11 @@ export default function Login() {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setError(error.message)
     } else if (mode === 'signup') {
-      const { error } = await supabase.auth.signUp({ email, password })
+      const full_name = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ')
+      const { error } = await supabase.auth.signUp({
+        email, password,
+        options: { data: { full_name } },
+      })
       if (error) setError(error.message)
       else setMessage('Check your email to confirm your account!')
     } else if (mode === 'forgot') {
@@ -110,6 +116,36 @@ export default function Login() {
 
           {/* Inputs */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+            {mode === 'signup' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6, letterSpacing: 0.5, fontFamily: 'var(--font-body)' }}>
+                    FIRST NAME
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="Jane"
+                    value={firstName}
+                    onChange={e => setFirstName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6, letterSpacing: 0.5, fontFamily: 'var(--font-body)' }}>
+                    LAST NAME
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="Doe"
+                    value={lastName}
+                    onChange={e => setLastName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6, letterSpacing: 0.5, fontFamily: 'var(--font-body)' }}>
                 EMAIL
