@@ -251,38 +251,59 @@ export default function Goals({ assets, user, netWorthHistory, currency = 'USD' 
   const [goals, setGoals] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [dbError, setDbError] = useState(null)
 
   const total = assets.reduce((s, a) => s + (a.value || 0), 0)
 
   useEffect(() => {
-    if (!user) return
+    if (!user) { setLoading(false); return }
     supabase
       .from('goals')
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: true })
-      .then(({ data }) => { setGoals(data || []); setLoading(false) })
+      .then(({ data, error }) => {
+        if (error) { setDbError('Load error: ' + error.message); }
+        else { setGoals(data || []) }
+        setLoading(false)
+      })
   }, [user])
 
   async function addGoal(form) {
-    const { data } = await supabase.from('goals').insert([{
+    if (!user) return
+    setDbError(null)
+    const { data, error } = await supabase.from('goals').insert([{
       user_id: user.id,
       name: form.name,
       target_amount: form.target,
       target_date: form.date || null,
       emoji: form.emoji,
-    }]).select()
+    }]).select('*')
+    if (error) { setDbError('Insert error: ' + error.message); return }
     if (data?.[0]) setGoals(g => [...g, data[0]])
   }
 
   async function deleteGoal(id) {
-    await supabase.from('goals').delete().eq('id', id)
-    setGoals(g => g.filter(x => x.id !== id))
+    const { error } = await supabase.from('goals').delete().eq('id', id)
+    if (error) setDbError('Delete error: ' + error.message)
+    else setGoals(g => g.filter(x => x.id !== id))
   }
 
   return (
-    <div style={{ maxWidth: 900 }}>
+    <div style={{ maxWidth: 1600 }}>
       {showModal && <AddGoalModal onAdd={addGoal} onClose={() => setShowModal(false)} />}
+
+      {dbError && (
+        <div style={{
+          background: 'var(--red-dim)', border: '1px solid var(--red)',
+          borderRadius: 10, padding: '12px 16px', marginBottom: 20,
+          fontSize: 13, color: 'var(--red)', fontFamily: 'var(--font-body)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span>⚠ {dbError}</span>
+          <button onClick={() => setDbError(null)} style={{ background: 'none', border: 'none', color: 'var(--red)', cursor: 'pointer', fontSize: 16 }}>×</button>
+        </div>
+      )}
 
       {/* Header */}
       <div className="fade-up" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36 }}>
@@ -352,8 +373,18 @@ export default function Goals({ assets, user, netWorthHistory, currency = 'USD' 
             background: 'linear-gradient(135deg, rgba(167,139,250,0.15), rgba(77,159,255,0.1))',
             border: '1px solid rgba(167,139,250,0.25)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 32, margin: '0 auto 24px',
-          }}>🎯</div>
+            margin: '0 auto 24px',
+          }}>
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <circle cx="16" cy="16" r="13" stroke="#a78bfa" strokeWidth="2" opacity="0.9"/>
+              <circle cx="16" cy="16" r="8" stroke="#a78bfa" strokeWidth="1.5" opacity="0.55"/>
+              <circle cx="16" cy="16" r="3.5" fill="#a78bfa" opacity="0.9"/>
+              <line x1="16" y1="1" x2="16" y2="6" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="16" y1="26" x2="16" y2="31" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="1" y1="16" x2="6" y2="16" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="26" y1="16" x2="31" y2="16" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </div>
           <h2 style={{ fontSize: 22, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: 0.3, marginBottom: 10 }}>
             No goals yet
           </h2>

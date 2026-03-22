@@ -24,6 +24,26 @@
   --font-body:    'Geologica', sans-serif;
 }
 
+[data-theme="light"] {
+  --bg:        #f4f4f8;
+  --bg2:       #ffffff;
+  --bg3:       #ebebf2;
+  --border:    rgba(0,0,0,0.08);
+  --border2:   rgba(0,0,0,0.13);
+  --text:      #0a0a0f;
+  --muted:     #8888a0;
+  --muted2:    #55556a;
+  --green:     #00b876;
+  --green-dim: rgba(0,184,118,0.12);
+  --red:       #e8304a;
+  --red-dim:   rgba(232,48,74,0.10);
+  --blue:      #2b7fff;
+  --amber:     #e09000;
+  --purple:    #7c5ce0;
+  --teal:      #14b8a6;
+  --accent:    #00b876;
+}
+
 html { font-size: 16px; }
 
 body {
@@ -47,7 +67,7 @@ a { text-decoration: none; color: inherit; }
 
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 2px; }
 
 /* ─── Animations ──────────────────────────────────────────────────────────── */
 

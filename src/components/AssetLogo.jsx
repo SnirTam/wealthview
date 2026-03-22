@@ -8,11 +8,6 @@ const CATEGORY_COLORS = {
   'Cash':        '#6b6b80',
 }
 
-const CATEGORY_ICONS = {
-  'Stocks': '📈', 'Crypto': '₿', 'Real Estate': '🏠', 'Retirement': '🏦', 'Cash': '💵',
-}
-
-// CoinGecko static CDN — no API key needed
 const CRYPTO_LOGOS = {
   bitcoin:          'https://assets.coingecko.com/coins/images/1/small/bitcoin.png',
   ethereum:         'https://assets.coingecko.com/coins/images/279/small/ethereum.png',
@@ -29,49 +24,72 @@ const CRYPTO_LOGOS = {
   'wrapped-bitcoin':'https://assets.coingecko.com/coins/images/7598/small/wrapped_bitcoin_wbtc.png',
 }
 
+// For non-crypto: derive 1-3 letter abbreviation from ticker or name
+function getInitials(ticker, category, name) {
+  if (category === 'Real Estate') return 'RE'
+  if (category === 'Retirement') return '401'
+  if (category === 'Cash') return '$'
+  if (ticker) return ticker.slice(0, 3).toUpperCase()
+  if (name) return name.slice(0, 2).toUpperCase()
+  return '?'
+}
+
 export function getLogoUrl(ticker, category) {
   if (!ticker) return null
-  if (category === 'Stocks') {
-    return `https://assets.parqet.com/logos/symbol/${ticker.toUpperCase()}?format=png`
-  }
   if (category === 'Crypto') {
     return CRYPTO_LOGOS[ticker.toLowerCase()] || null
   }
   return null
 }
 
-export default function AssetLogo({ ticker, category, size = 36, style: extraStyle = {} }) {
+export default function AssetLogo({ ticker, category, name, size = 36, style: extraStyle = {} }) {
   const [error, setError] = useState(false)
-  const logoUrl = !error ? getLogoUrl(ticker, category) : null
   const color = CATEGORY_COLORS[category] || '#4d9fff'
+  const radius = Math.round(size * 0.28)
 
   const containerStyle = {
     width: size, height: size,
-    borderRadius: Math.round(size * 0.28),
-    flexShrink: 0, overflow: 'hidden',
-    background: color + '22',
-    border: '1px solid ' + color + '44',
+    borderRadius: radius,
+    flexShrink: 0,
+    background: color + '1a',
+    border: '1px solid ' + color + '3a',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: Math.round(size * 0.45),
+    overflow: 'hidden',
     ...extraStyle,
   }
 
-  if (logoUrl) {
-    return (
-      <div style={containerStyle}>
-        <img
-          src={logoUrl}
-          alt={ticker || category}
-          onError={() => setError(true)}
-          style={{ width: '80%', height: '80%', objectFit: 'contain' }}
-        />
-      </div>
-    )
+  // Crypto: try logo image
+  if (category === 'Crypto' && ticker) {
+    const logoUrl = !error ? (CRYPTO_LOGOS[ticker.toLowerCase()] || null) : null
+    if (logoUrl) {
+      return (
+        <div style={containerStyle}>
+          <img
+            src={logoUrl}
+            alt={ticker}
+            onError={() => setError(true)}
+            style={{ width: '72%', height: '72%', objectFit: 'contain' }}
+          />
+        </div>
+      )
+    }
   }
+
+  // All others: styled initials
+  const initials = getInitials(ticker, category, name)
+  const fontSize = initials.length > 2 ? Math.round(size * 0.28) : Math.round(size * 0.35)
 
   return (
     <div style={containerStyle}>
-      {CATEGORY_ICONS[category] || '💰'}
+      <span style={{
+        fontSize, fontWeight: 700, color,
+        fontFamily: 'var(--font-display)',
+        letterSpacing: initials.length > 2 ? -0.5 : 0,
+        lineHeight: 1,
+        userSelect: 'none',
+      }}>
+        {initials}
+      </span>
     </div>
   )
 }

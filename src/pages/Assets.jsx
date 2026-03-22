@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import { formatAmount } from './Dashboard'
 import AssetLogo from '../components/AssetLogo'
 
@@ -92,9 +94,11 @@ function EditValueModal({ asset, onSave, onClose }) {
   )
 }
 
-export default function Assets({ assets, setAssets, isPro, freeLimit, currency = 'USD' }) {
+export default function Assets({ assets, setAssets, isPro, currency = 'USD', user }) {
   const [filter, setFilter] = useState('All')
   const [editingAsset, setEditingAsset] = useState(null)
+  const [exportOpen, setExportOpen] = useState(false)
+  const exportRef = useRef(null)
 
   const total = assets.reduce((s, a) => s + (a.value || 0), 0)
   const filtered = filter === 'All' ? assets : assets.filter(a => a.category === filter)
@@ -105,6 +109,42 @@ export default function Assets({ assets, setAssets, isPro, freeLimit, currency =
 
   function updateAssetValue(id, newValue) {
     setAssets(assets.map(a => a.id === id ? { ...a, value: newValue } : a))
+  }
+
+  function exportCSV() {
+    const rows = [
+      ['Name', 'Category', 'Ticker', 'Value (USD)'],
+      ...assets.map(a => [a.name, a.category, a.ticker || '', a.value || 0]),
+    ]
+    const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = 'wealthview-assets.csv'; a.click()
+    URL.revokeObjectURL(url)
+    setExportOpen(false)
+  }
+
+  function exportPDF() {
+    const doc = new jsPDF()
+    doc.setFontSize(20)
+    doc.setTextColor(0, 217, 139)
+    doc.text('Wealthview — Portfolio Summary', 14, 20)
+    doc.setFontSize(10)
+    doc.setTextColor(120, 120, 140)
+    doc.text(`${user?.email || ''} · ${new Date().toLocaleDateString()}`, 14, 28)
+    doc.setFontSize(14)
+    doc.setTextColor(0, 0, 0)
+    doc.text(`Total Net Worth: ${formatAmount(total, currency)}`, 14, 40)
+    autoTable(doc, {
+      startY: 48,
+      head: [['Asset', 'Category', 'Ticker', 'Value']],
+      body: assets.map(a => [a.name, a.category, a.ticker || '—', formatAmount(a.value || 0, currency)]),
+      headStyles: { fillColor: [0, 40, 30], textColor: [0, 217, 139] },
+      alternateRowStyles: { fillColor: [245, 245, 250] },
+    })
+    doc.save('wealthview-portfolio.pdf')
+    setExportOpen(false)
   }
 
   return (
@@ -119,15 +159,61 @@ export default function Assets({ assets, setAssets, isPro, freeLimit, currency =
       )}
 
       {/* Header */}
-      <div className="fade-up" style={{ marginBottom: 36 }}>
-        <h1 style={{ fontSize: 32, fontWeight: 600, lineHeight: 1.1, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
-          Assets
-        </h1>
-        <p style={{ fontSize: 14, color: 'var(--muted2)', marginTop: 8, fontFamily: 'var(--font-body)', fontWeight: 300 }}>
-          {isPro
-            ? `${assets.length} assets — Pro plan`
-            : `${assets.length} of ${freeLimit} assets — Free plan`}
-        </p>
+      <div className="fade-up" style={{ marginBottom: 36, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 style={{ fontSize: 32, fontWeight: 600, lineHeight: 1.1, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
+            Assets
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--muted2)', marginTop: 8, fontFamily: 'var(--font-body)', fontWeight: 300 }}>
+            {assets.length} {assets.length === 1 ? 'asset' : 'assets'} tracked
+          </p>
+        </div>
+        <div style={{ position: 'relative' }} ref={exportRef}>
+          <button
+            onClick={() => {
+              if (!isPro) { alert('Export is a Pro feature. Upgrade to export your portfolio.'); return }
+              setExportOpen(o => !o)
+            }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'var(--bg2)', color: 'var(--text)',
+              padding: '8px 16px', borderRadius: 8, marginTop: 8,
+              fontSize: 12, fontWeight: 500, border: '1px solid var(--border2)',
+              cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'var(--bg2)'}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 2v9M5 8l3 3 3-3M3 13h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Export {!isPro && <span style={{ fontSize: 10, color: 'var(--green)', marginLeft: 2 }}>Pro</span>}
+          </button>
+          {exportOpen && (
+            <div style={{
+              position: 'absolute', right: 0, top: '110%', zIndex: 30,
+              background: 'var(--bg2)', border: '1px solid var(--border2)',
+              borderRadius: 10, overflow: 'hidden', minWidth: 160,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+            }}>
+              {[
+                { label: 'Export as CSV', fn: exportCSV, icon: '📄' },
+                { label: 'Export as PDF', fn: exportPDF, icon: '📑' },
+              ].map(opt => (
+                <button key={opt.label} onClick={opt.fn} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  width: '100%', padding: '11px 16px', background: 'transparent',
+                  border: 'none', color: 'var(--text)', fontSize: 13,
+                  fontFamily: 'var(--font-body)', cursor: 'pointer', textAlign: 'left',
+                  transition: 'background 0.1s',
+                }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span>{opt.icon}</span> {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Category breakdown cards */}
@@ -163,28 +249,6 @@ export default function Assets({ assets, setAssets, isPro, freeLimit, currency =
           )
         })}
       </div>
-
-      {/* Free tier progress */}
-      {!isPro && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
-              Free plan usage
-            </span>
-            <span style={{ fontSize: 11, color: assets.length >= freeLimit ? 'var(--red)' : 'var(--muted)', fontFamily: 'var(--font-body)' }}>
-              {assets.length} / {freeLimit} assets
-            </span>
-          </div>
-          <div style={{ height: 4, background: 'var(--bg3)', borderRadius: 2, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%', borderRadius: 2,
-              width: Math.min((assets.length / freeLimit) * 100, 100) + '%',
-              background: assets.length >= freeLimit ? 'var(--red)' : 'linear-gradient(90deg, var(--green), var(--teal))',
-              transition: 'width 0.5s ease',
-            }} />
-          </div>
-        </div>
-      )}
 
       {/* Filter pills */}
       <div className="filter-pills" style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>

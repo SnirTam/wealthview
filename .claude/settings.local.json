@@ -4,7 +4,9 @@
       "Bash(npx vite:*)",
       "Bash(npm run:*)",
       "Bash(gh run:*)",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "Bash(npm install:*)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }

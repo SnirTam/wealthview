@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell
@@ -7,6 +7,7 @@ import { useStockPrices } from '../useStockPrices'
 import { startCheckout } from '../stripe'
 import { supabase } from '../supabase'
 import AssetLogo from '../components/AssetLogo'
+import ShareCard from '../components/ShareCard'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -94,6 +95,13 @@ function buildChartData(history, currentTotal) {
     points.push({ month: 'Now', value: currentTotal })
   }
   return points.length >= 2 ? points : null
+}
+
+function generateDashboardSample(currentTotal) {
+  const base = currentTotal > 0 ? currentTotal : 88000
+  const months = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Now']
+  const ratios = [0.71, 0.78, 0.84, 0.88, 0.95, 1]
+  return months.map((month, i) => ({ month, value: Math.round(base * ratios[i]) }))
 }
 
 function calcMonthChange(history, currentTotal) {
@@ -273,10 +281,10 @@ function AddAssetModal({ onAdd, onClose, isPro, assetsCount, freeLimit, userEmai
   )
 }
 
-function StatCard({ label, value, sub, subColor, delay = 0, accent }) {
+function StatCard({ label, value, sub, subColor, delay = 0, accent, valueColor }) {
   return (
     <div className="fade-up" style={{
-      background: 'var(--bg2)', borderRadius: 16, padding: '22px 24px',
+      background: 'var(--bg2)', borderRadius: 16, padding: '16px 20px',
       border: '1px solid var(--border)', flex: 1, position: 'relative', overflow: 'hidden',
       animationDelay: delay + 'ms', transition: 'border-color 0.2s, transform 0.2s', cursor: 'default',
     }}
@@ -287,7 +295,7 @@ function StatCard({ label, value, sub, subColor, delay = 0, accent }) {
         background: `linear-gradient(90deg, ${accent}, transparent)`, borderRadius: '16px 16px 0 0' }} />}
       <p style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 10, letterSpacing: 1.5,
         textTransform: 'uppercase', fontWeight: 500, fontFamily: 'var(--font-body)' }}>{label}</p>
-      <p style={{ fontSize: 28, fontWeight: 600, lineHeight: 1, fontFamily: 'var(--font-display)', letterSpacing: 0.5 }}>{value}</p>
+      <p style={{ fontSize: 24, fontWeight: 600, lineHeight: 1, fontFamily: 'var(--font-display)', letterSpacing: 0.5, color: valueColor || 'var(--text)' }}>{value}</p>
       {sub && <p style={{ fontSize: 12, color: subColor || 'var(--muted)', marginTop: 10,
         display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'var(--font-body)' }}>{sub}</p>}
     </div>
@@ -379,7 +387,7 @@ function EmptyState({ onAdd }) {
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export default function Dashboard({
-  assets, isPro, user, showAddAsset, setShowAddAsset,
+  assets, liabilities = [], isPro, user, showAddAsset, setShowAddAsset,
   saveAssets, freeLimit, setPage, netWorthHistory,
   currency, setCurrency, prefillAsset, onPrefillUsed,
 }) {
@@ -387,6 +395,7 @@ export default function Dashboard({
   const { prices: stockPrices, lastUpdated: stockLastUpdated } = useStockPrices(assets)
   const [cryptoLastUpdated, setCryptoLastUpdated] = useState(null)
   const [clock, setClock] = useState(new Date())
+  const [showShareCard, setShowShareCard] = useState(false)
   useEffect(() => {
     const t = setInterval(() => setClock(new Date()), 1000)
     return () => clearInterval(t)
@@ -395,6 +404,8 @@ export default function Dashboard({
   const firstName = getFirstName(user)
 
   const total = assets.reduce((sum, a) => sum + (a.value || 0), 0)
+  const totalLiabilities = liabilities.reduce((sum, l) => sum + (l.balance || 0), 0)
+  const netWorth = total - totalLiabilities
 
   const history = netWorthHistory || []
   const chartData  = buildChartData(history, total)
@@ -404,10 +415,14 @@ export default function Dashboard({
   // Combined "last updated" label
   const lastUpdated = stockLastUpdated || cryptoLastUpdated
 
-  const pieData = Object.keys(CATEGORY_COLORS).map(cat => ({
-    name: cat,
-    value: assets.filter(a => a.category === cat).reduce((s, a) => s + (a.value || 0), 0),
-  })).filter(d => d.value > 0)
+  const pieData = [
+    ...Object.keys(CATEGORY_COLORS).map(cat => ({
+      name: cat,
+      value: assets.filter(a => a.category === cat).reduce((s, a) => s + (a.value || 0), 0),
+      color: CATEGORY_COLORS[cat],
+    })).filter(d => d.value > 0),
+    ...(totalLiabilities > 0 ? [{ name: 'Liabilities', value: totalLiabilities, color: '#ff4d6d' }] : []),
+  ]
 
   const topAssets = [...assets].sort((a, b) => b.value - a.value).slice(0, 5)
 
@@ -458,20 +473,27 @@ export default function Dashboard({
 
   // ── Currency selector ────────────────────────────────────────────────────
   const currencySelector = (
-    <select
-      value={currency}
-      onChange={e => setCurrency(e.target.value)}
-      style={{
-        background: 'var(--bg2)', color: 'var(--text)', border: '1px solid var(--border2)',
-        borderRadius: 8, padding: '6px 10px', fontSize: 12, cursor: 'pointer',
-        fontFamily: 'var(--font-body)', outline: 'none', appearance: 'none',
-        WebkitAppearance: 'none',
-      }}
-    >
-      {Object.entries(CURRENCIES).map(([k, v]) => (
-        <option key={k} value={k}>{v.symbol} {k}</option>
-      ))}
-    </select>
+    <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+      <select
+        value={currency}
+        onChange={e => setCurrency(e.target.value)}
+        style={{
+          background: 'var(--bg2)', color: 'var(--muted2)',
+          border: '1px solid var(--border2)',
+          borderRadius: 8, padding: '7px 28px 7px 12px', fontSize: 12, cursor: 'pointer',
+          fontFamily: 'var(--font-body)', outline: 'none', appearance: 'none',
+          WebkitAppearance: 'none', fontWeight: 500,
+        }}
+      >
+        {Object.entries(CURRENCIES).map(([k, v]) => (
+          <option key={k} value={k}>{v.symbol} {k}</option>
+        ))}
+      </select>
+      <svg style={{ position: 'absolute', right: 8, pointerEvents: 'none', color: 'var(--muted)' }}
+        width="10" height="10" viewBox="0 0 10 10" fill="none">
+        <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    </div>
   )
 
 
@@ -572,14 +594,28 @@ export default function Dashboard({
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 4 }}>
             {currencySelector}
             <button
+              onClick={() => setShowShareCard(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: 'var(--bg2)', color: 'var(--muted2)',
+                padding: '7px 14px', borderRadius: 8,
+                fontSize: 12, fontWeight: 500, border: '1px solid var(--border2)',
+                cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.background = 'var(--bg3)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'var(--bg2)' }}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M12 10.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm0 0L6 7.5m6-6.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm0 0L6 7.5m-6 1a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
+              Share
+            </button>
+            <button
               onClick={() => setShowAddAsset(true)}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: 'var(--bg2)', color: 'var(--text)',
                 padding: '7px 16px', borderRadius: 8,
                 fontSize: 12, fontWeight: 500, border: '1px solid var(--border2)',
-                cursor: 'pointer', fontFamily: 'var(--font-body)',
-                transition: 'all 0.15s',
+                cursor: 'pointer', fontFamily: 'var(--font-body)', transition: 'all 0.15s',
               }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.background = 'var(--bg3)' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.background = 'var(--bg2)' }}
@@ -589,22 +625,38 @@ export default function Dashboard({
       </div>
 
       {/* ── Stat cards ── */}
-      <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+      <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 24 }}>
         <StatCard
-          label="Total net worth"
-          value={formatAmount(total, currency)}
+          label="Net worth"
+          value={formatAmount(netWorth, currency)}
           sub={monthChange !== null
             ? (monthChange >= 0 ? '↑' : '↓') + ' ' + formatAmount(Math.abs(monthChange), currency) + ' this month'
-            : 'Add more assets to track growth'}
+            : 'Assets minus liabilities'}
           subColor={monthChange !== null ? (monthChange >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--muted)'}
-          delay={0} accent="var(--green)"
+          delay={0} accent={netWorth >= 0 ? 'var(--green)' : 'var(--red)'}
+          valueColor={netWorth < 0 ? 'var(--red)' : undefined}
+        />
+        <StatCard
+          label="Total assets"
+          value={formatAmount(total, currency)}
+          sub={`${assets.length} asset${assets.length !== 1 ? 's' : ''}`}
+          subColor="var(--muted)"
+          delay={60} accent="var(--blue)"
+        />
+        <StatCard
+          label="Total liabilities"
+          value={totalLiabilities > 0 ? formatAmount(totalLiabilities, currency) : '—'}
+          sub={totalLiabilities > 0 ? `${liabilities.length} debt${liabilities.length !== 1 ? 's' : ''}` : 'No debts tracked'}
+          subColor={totalLiabilities > 0 ? 'var(--red)' : 'var(--muted)'}
+          delay={120} accent={totalLiabilities > 0 ? 'var(--red)' : 'var(--border2)'}
+          valueColor={totalLiabilities > 0 ? 'var(--red)' : undefined}
         />
         <StatCard
           label="Stocks 24h"
           value={avgStockChange != null ? (avgStockChange >= 0 ? '+' : '') + avgStockChange.toFixed(2) + '%' : '—'}
           sub={avgStockChange != null ? 'Avg. across your stocks' : 'Add stocks with tickers'}
           subColor={avgStockChange != null ? (avgStockChange >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--muted)'}
-          delay={80}
+          delay={180}
           accent={avgStockChange != null ? (avgStockChange >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--blue)'}
         />
         <StatCard
@@ -612,7 +664,7 @@ export default function Dashboard({
           value={avgCryptoChange != null ? (avgCryptoChange >= 0 ? '+' : '') + avgCryptoChange.toFixed(2) + '%' : '—'}
           sub={avgCryptoChange != null ? 'Avg. across your crypto' : 'No crypto data yet'}
           subColor={avgCryptoChange != null ? (avgCryptoChange >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--muted)'}
-          delay={160}
+          delay={240}
           accent={avgCryptoChange != null ? (avgCryptoChange >= 0 ? 'var(--green)' : 'var(--red)') : 'var(--purple)'}
         />
       </div>
@@ -625,8 +677,8 @@ export default function Dashboard({
             <div>
               <p style={{ fontSize: 10, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 1.5,
                 fontWeight: 500, marginBottom: 6, fontFamily: 'var(--font-body)' }}>Net worth</p>
-              <p style={{ fontSize: 24, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: 0.5 }}>
-                {formatAmount(total, currency)}
+              <p style={{ fontSize: 24, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: 0.5, color: netWorth < 0 ? 'var(--red)' : 'var(--text)' }}>
+                {formatAmount(netWorth, currency)}
               </p>
             </div>
             {sixMonthPct !== null && (
@@ -642,27 +694,33 @@ export default function Dashboard({
             )}
           </div>
 
-          {chartData ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={chartData} margin={{ top: 5, right: 0, bottom: 0, left: 0 }}>
-                <defs>
-                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"   stopColor="#00d98b" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#00d98b" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--muted)', fontFamily: 'Geologica' }} axisLine={false} tickLine={false} />
-                <YAxis hide />
-                <Tooltip content={renderTooltip} />
-                <Area type="monotone" dataKey="value" stroke="var(--green)" strokeWidth={2.5} fill="url(#chartGrad)" dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
-              <p style={{ fontSize: 13, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Chart populates as you track over time</p>
-              <p style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)', opacity: 0.6 }}>Come back tomorrow to see your first data point</p>
-            </div>
-          )}
+          {(() => {
+            const displayData = chartData || generateDashboardSample(total)
+            const isSample = !chartData
+            return (
+              <>
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={displayData} margin={{ top: 5, right: 0, bottom: 0, left: 0 }}>
+                    <defs>
+                      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%"   stopColor="#00d98b" stopOpacity={0.25} />
+                        <stop offset="100%" stopColor="#00d98b" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--muted)', fontFamily: 'Geologica' }} axisLine={false} tickLine={false} />
+                    <YAxis hide />
+                    <Tooltip content={renderTooltip} />
+                    <Area type="monotone" dataKey="value" stroke="var(--green)" strokeWidth={2.5} fill="url(#chartGrad)" dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+                {isSample && (
+                  <p style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-body)', marginTop: 8, opacity: 0.6, letterSpacing: 0.5 }}>
+                    Sample preview · tracks automatically as you add assets
+                  </p>
+                )}
+              </>
+            )
+          })()}
         </div>
 
         <div className="fade-up" style={{ background: 'var(--bg2)', borderRadius: 16, padding: '24px',
@@ -680,21 +738,24 @@ export default function Dashboard({
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <PieChart width={160} height={160}>
                 <Pie data={pieData} cx={75} cy={75} innerRadius={50} outerRadius={72} dataKey="value" strokeWidth={0} paddingAngle={3}>
-                  {pieData.map(entry => <Cell key={entry.name} fill={CATEGORY_COLORS[entry.name]} />)}
+                  {pieData.map(entry => <Cell key={entry.name} fill={entry.color} />)}
                 </Pie>
               </PieChart>
             </div>
           )}
           <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {pieData.map(d => (
-              <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 2, background: CATEGORY_COLORS[d.name], flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: 'var(--muted2)', flex: 1, fontFamily: 'var(--font-body)' }}>{d.name}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
-                  {Math.round(d.value / total * 100)}%
-                </span>
-              </div>
-            ))}
+            {pieData.map(d => {
+              const grandTotal = pieData.reduce((s, x) => s + x.value, 0)
+              return (
+                <div key={d.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: 'var(--muted2)', flex: 1, fontFamily: 'var(--font-body)' }}>{d.name}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: d.name === 'Liabilities' ? 'var(--red)' : 'var(--text)', fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
+                    {Math.round(d.value / grandTotal * 100)}%
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -758,6 +819,16 @@ export default function Dashboard({
 
       {/* ── Weekly summary card ── */}
       <WeeklySummaryCard user={user} />
+
+      {/* ── Share card modal ── */}
+      {showShareCard && (
+        <ShareCard
+          total={netWorth}
+          currency={currency}
+          user={user}
+          onClose={() => setShowShareCard(false)}
+        />
+      )}
     </div>
   )
 }

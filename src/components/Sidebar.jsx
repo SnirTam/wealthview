@@ -41,6 +41,17 @@ const NAV_GROUPS = [
         ),
       },
       {
+        id: 'liabilities',
+        label: 'Liabilities',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="4" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+            <path d="M5 4V3a3 3 0 0 1 6 0v1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M8 8v2M7 9h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        ),
+      },
+      {
         id: 'goals',
         label: 'Goals',
         icon: (
@@ -61,6 +72,16 @@ const NAV_GROUPS = [
           </svg>
         ),
       },
+      {
+        id: 'alerts',
+        label: 'Alerts',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 2a5 5 0 0 0-5 5v2.5L2 11h12l-1-1.5V7a5 5 0 0 0-5-5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+            <path d="M6.5 12a1.5 1.5 0 0 0 3 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        ),
+      },
     ],
   },
 ]
@@ -75,7 +96,7 @@ function getInitials(email) {
   return local.slice(0, 2).toUpperCase()
 }
 
-export default function Sidebar({ page, setPage, onSignOut, user, isPro }) {
+export default function Sidebar({ page, setPage, onSignOut, user, isPro, theme, setTheme }) {
   return (
     <div style={{
       width: 240,
@@ -101,7 +122,7 @@ export default function Sidebar({ page, setPage, onSignOut, user, isPro }) {
               Wealthview
             </p>
             <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1, fontFamily: 'var(--font-body)' }}>
-              Net worth tracker
+              Your financial picture
             </p>
           </div>
         </div>
@@ -191,15 +212,44 @@ export default function Sidebar({ page, setPage, onSignOut, user, isPro }) {
               Current plan
             </p>
             <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 4, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
-              Free tier
+              Starter
             </p>
             <p style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
-              Up to 5 assets
+              Upgrade for unlimited assets
             </p>
           </div>
         )}
 
-        {/* User + sign out */}
+        {/* Theme toggle */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          padding: '6px', borderRadius: 10,
+          border: '1px solid var(--border)',
+          background: 'var(--bg3)',
+          marginBottom: 8,
+        }}>
+          {[
+            { value: 'light', icon: '☀️', label: 'Light' },
+            { value: 'dark',  icon: '🌙', label: 'Dark'  },
+          ].map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setTheme(opt.value)}
+              style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                gap: 5, padding: '7px 0', borderRadius: 7, fontSize: 11, fontWeight: 500,
+                fontFamily: 'var(--font-body)', cursor: 'pointer', transition: 'all 0.15s',
+                border: theme === opt.value ? '1px solid var(--border2)' : '1px solid transparent',
+                background: theme === opt.value ? 'var(--bg2)' : 'transparent',
+                color: theme === opt.value ? 'var(--text)' : 'var(--muted)',
+              }}
+            >
+              <span style={{ fontSize: 13 }}>{opt.icon}</span> {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {/* User row */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '12px', borderRadius: 10,
@@ -224,16 +274,22 @@ export default function Sidebar({ page, setPage, onSignOut, user, isPro }) {
           </div>
           <button
             onClick={onSignOut}
-            title="Sign out"
             style={{
-              background: 'transparent', border: 'none', cursor: 'pointer',
-              color: 'var(--muted)', fontSize: 16, padding: '2px',
-              transition: 'color 0.15s', flexShrink: 0,
+              background: 'transparent', border: '1px solid var(--border2)',
+              borderRadius: 7, cursor: 'pointer', padding: '5px 9px',
+              fontSize: 11, fontWeight: 500, fontFamily: 'var(--font-body)',
+              color: 'var(--muted)', transition: 'all 0.15s', flexShrink: 0,
+              display: 'flex', alignItems: 'center', gap: 4,
             }}
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--red)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--muted)'}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.borderColor = 'var(--red)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.borderColor = 'var(--border2)' }}
           >
-            ⏻
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+              <path d="M6 2H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+              <path d="M11 11l3-3-3-3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M14 8H6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+            </svg>
+            Log out
           </button>
         </div>
       </div>

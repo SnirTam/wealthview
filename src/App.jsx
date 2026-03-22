@@ -1,22 +1,32 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
 import { startCheckout } from './stripe'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import Assets from './pages/Assets'
+import Liabilities from './pages/Liabilities'
 import Analytics from './pages/Analytics'
 import Goals from './pages/Goals'
 import Watchlist from './pages/Watchlist'
+import Alerts from './pages/Alerts'
 import Login from './pages/Login'
+import Landing from './pages/Landing'
 import ErrorBoundary from './components/ErrorBoundary'
+import OnboardingModal from './components/OnboardingModal'
+import MilestoneModal from './components/MilestoneModal'
+import Toast from './components/Toast'
 
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
   assets: 'Assets',
+  liabilities: 'Liabilities',
   analytics: 'Analytics',
   goals: 'Goals',
   watchlist: 'Watchlist',
+  alerts: 'Alerts',
 }
+
+const MILESTONES = [10000, 50000, 100000, 250000, 500000, 1000000, 5000000, 10000000]
 
 function TopBar({ page, isPro, userEmail }) {
   const now = new Date()
@@ -33,13 +43,12 @@ function TopBar({ page, isPro, userEmail }) {
     }} className="desktop-topbar">
       <div>
         <p style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
-          {PAGE_TITLES[page]}
+          {PAGE_TITLES[page] || 'Dashboard'}
         </p>
         <p style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)', marginTop: 1 }}>
           {dateStr}
         </p>
       </div>
-
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {!isPro ? (
           <button
@@ -73,6 +82,7 @@ function TopBar({ page, isPro, userEmail }) {
 export default function App() {
   const [page, setPage] = useState('dashboard')
   const [assets, setAssets] = useState([])
+  const [liabilities, setLiabilitiesState] = useState([])
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [assetsLoading, setAssetsLoading] = useState(false)
@@ -82,28 +92,40 @@ export default function App() {
   const [currency, setCurrencyState] = useState(() => localStorage.getItem('wv_currency') || 'USD')
   const [netWorthHistory, setNetWorthHistory] = useState([])
   const [watchlistPrefill, setWatchlistPrefill] = useState(null)
+  const [theme, setThemeState] = useState(() => localStorage.getItem('wv_theme') || 'dark')
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [milestone, setMilestone] = useState(null)
+  const [toasts, setToasts] = useState([])
+  const [showLogin, setShowLogin] = useState(false)
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
+
+  function setTheme(t) {
+    setThemeState(t)
+    localStorage.setItem('wv_theme', t)
+  }
 
   function setCurrency(c) {
     setCurrencyState(c)
     localStorage.setItem('wv_currency', c)
   }
 
+  // ── Auth ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       const u = session?.user ?? null
       setUser(u)
 
       if (u) {
-        // Determine Pro status: Supabase metadata takes precedence, localStorage as fallback
         const proFromMeta = u.user_metadata?.is_pro === true
         const proFromStorage = localStorage.getItem('wealthview_pro') === 'true'
         let proStatus = proFromMeta || proFromStorage
 
-        // Handle post-upgrade redirect
         const params = new URLSearchParams(window.location.search)
         if (params.get('upgraded') === 'true') {
           window.history.replaceState({}, '', '/')
-          // Persist to Supabase metadata
           await supabase.auth.updateUser({ data: { is_pro: true } })
           localStorage.setItem('wealthview_pro', 'true')
           proStatus = true
@@ -129,6 +151,7 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // ── Load assets + liabilities + history ──────────────────────────────────
   useEffect(() => {
     if (!user) return
     setAssetsLoading(true)
@@ -143,13 +166,44 @@ export default function App() {
         .eq('user_id', user.id)
         .gte('recorded_at', sixMonthsAgo.toISOString())
         .order('recorded_at', { ascending: true }),
-    ]).then(([assetsRes, historyRes]) => {
-      if (!assetsRes.error) setAssets(assetsRes.data || [])
+      supabase.from('liabilities').select('*').eq('user_id', user.id),
+    ]).then(([assetsRes, historyRes, liabRes]) => {
+      const loadedAssets = assetsRes.error ? [] : (assetsRes.data || [])
+      if (!assetsRes.error) setAssets(loadedAssets)
       if (!historyRes.error) setNetWorthHistory(historyRes.data || [])
+      if (!liabRes.error) setLiabilitiesState(liabRes.data || [])
+
+      // Show onboarding for brand-new users
+      if (loadedAssets.length === 0 && !user.user_metadata?.onboarding_done) {
+        setShowOnboarding(true)
+      }
+
       setAssetsLoading(false)
     })
   }, [user])
 
+  // ── Milestone check ───────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user || assets.length === 0) return
+    const totalAssets = assets.reduce((s, a) => s + (a.value || 0), 0)
+    const totalLiab = liabilities.reduce((s, l) => s + (l.balance || 0), 0)
+    const netWorth = totalAssets - totalLiab
+    if (netWorth <= 0) return
+
+    const celebratedKey = `wv_milestones_${user.id}`
+    const celebrated = JSON.parse(localStorage.getItem(celebratedKey) || '[]')
+
+    for (const m of MILESTONES) {
+      if (netWorth >= m && !celebrated.includes(m)) {
+        celebrated.push(m)
+        localStorage.setItem(celebratedKey, JSON.stringify(celebrated))
+        setMilestone(m)
+        break
+      }
+    }
+  }, [assets, liabilities, user])
+
+  // ── Save assets ───────────────────────────────────────────────────────────
   async function saveAssets(newAssets) {
     setAssets(newAssets)
     if (!user) return
@@ -161,28 +215,76 @@ export default function App() {
         )
         if (error) throw error
       }
-      // Record net worth snapshot
       const total = newAssets.reduce((s, a) => s + (a.value || 0), 0)
       if (total > 0) {
         const { data } = await supabase.from('net_worth_history').insert(
           [{ user_id: user.id, value: total }]
         ).select('value, recorded_at')
-        if (data?.[0]) {
-          setNetWorthHistory(prev => [...prev, data[0]])
-        }
+        if (data?.[0]) setNetWorthHistory(prev => [...prev, data[0]])
       }
     } catch (err) {
       console.error('Failed to save assets:', err)
     }
   }
 
+  // ── Save liabilities ──────────────────────────────────────────────────────
+  async function saveLiabilities(newLiabilities) {
+    setLiabilitiesState(newLiabilities)
+    if (!user) return
+    try {
+      await supabase.from('liabilities').delete().eq('user_id', user.id)
+      if (newLiabilities.length > 0) {
+        const { error } = await supabase.from('liabilities').insert(
+          newLiabilities.map(l => ({
+            user_id: user.id,
+            name: l.name,
+            category: l.category,
+            balance: l.balance,
+            interest_rate: l.interest_rate || 0,
+          }))
+        )
+        if (error) throw error
+      }
+    } catch (err) {
+      console.error('Failed to save liabilities:', err)
+    }
+  }
+
+  // ── Toast helpers ─────────────────────────────────────────────────────────
+  const addToast = useCallback((title, message, type = 'success') => {
+    const id = Date.now()
+    setToasts(t => [...t, { id, title, message, type }])
+  }, [])
+
+  function removeToast(id) {
+    setToasts(t => t.filter(x => x.id !== id))
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut()
     setAssets([])
+    setLiabilitiesState([])
     setIsPro(false)
     setPage('dashboard')
+    setShowLogin(false)
   }
 
+  // ── Onboarding helpers ────────────────────────────────────────────────────
+  function handleOnboardingComplete() {
+    setShowOnboarding(false)
+    supabase.auth.updateUser({ data: { onboarding_done: true } }).catch(() => {})
+  }
+
+  function handleOnboardingSkip() {
+    setShowOnboarding(false)
+    supabase.auth.updateUser({ data: { onboarding_done: true } }).catch(() => {})
+  }
+
+  function handleOnboardingAddAsset(asset) {
+    saveAssets([...assets, asset])
+  }
+
+  // ── Loading splash ────────────────────────────────────────────────────────
   if (authLoading) {
     return (
       <div style={{
@@ -205,7 +307,11 @@ export default function App() {
     )
   }
 
-  if (!user) return <Login />
+  // ── Not logged in: Landing or Login ──────────────────────────────────────
+  if (!user) {
+    if (showLogin) return <Login />
+    return <Landing onGetStarted={() => setShowLogin(true)} onSignIn={() => setShowLogin(true)} />
+  }
 
   const FREE_LIMIT = 5
 
@@ -232,6 +338,8 @@ export default function App() {
             onSignOut={handleSignOut}
             user={user}
             isPro={isPro}
+            theme={theme}
+            setTheme={setTheme}
           />
         </div>
 
@@ -243,6 +351,8 @@ export default function App() {
             onSignOut={handleSignOut}
             user={user}
             isPro={isPro}
+            theme={theme}
+            setTheme={setTheme}
           />
         </div>
 
@@ -274,19 +384,13 @@ export default function App() {
                 padding: '6px 12px', fontSize: 12, fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'var(--font-display)',
               }}
-            >
-              + Add
-            </button>
+            >+ Add</button>
           </div>
 
           {/* Desktop sticky topbar */}
-          <TopBar
-            page={page}
-            isPro={isPro}
-            userEmail={user?.email}
-          />
+          <TopBar page={page} isPro={isPro} userEmail={user?.email} />
 
-          {/* Page content with fade transition */}
+          {/* Page content */}
           <div className="main-content page-transition" key={page}>
             {assetsLoading ? (
               <div style={{
@@ -307,6 +411,7 @@ export default function App() {
                 {page === 'dashboard' && (
                   <Dashboard
                     assets={assets}
+                    liabilities={liabilities}
                     isPro={isPro}
                     user={user}
                     showAddAsset={showAddAsset}
@@ -327,6 +432,15 @@ export default function App() {
                     setAssets={saveAssets}
                     isPro={isPro}
                     freeLimit={FREE_LIMIT}
+                    currency={currency}
+                    user={user}
+                  />
+                )}
+                {page === 'liabilities' && (
+                  <Liabilities
+                    liabilities={liabilities}
+                    setLiabilities={saveLiabilities}
+                    user={user}
                     currency={currency}
                   />
                 )}
@@ -355,10 +469,39 @@ export default function App() {
                     }}
                   />
                 )}
+                {page === 'alerts' && (
+                  <Alerts
+                    isPro={isPro}
+                    assets={assets}
+                    addToast={addToast}
+                  />
+                )}
               </>
             )}
           </div>
         </main>
+
+        {/* Onboarding modal */}
+        {showOnboarding && (
+          <OnboardingModal
+            user={user}
+            onComplete={handleOnboardingComplete}
+            onSkip={handleOnboardingSkip}
+            onAddAsset={handleOnboardingAddAsset}
+          />
+        )}
+
+        {/* Milestone modal */}
+        {milestone && (
+          <MilestoneModal
+            milestone={milestone}
+            onClose={() => setMilestone(null)}
+          />
+        )}
+
+        {/* Toast notifications */}
+        <Toast toasts={toasts} removeToast={removeToast} />
+
       </div>
     </ErrorBoundary>
   )

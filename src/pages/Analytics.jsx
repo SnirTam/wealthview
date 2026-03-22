@@ -153,14 +153,12 @@ export default function Analytics({ assets, netWorthHistory, currency = 'USD' })
           Deep-dive into your wealth over time.
         </p>
         {isSample && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10,
-            background: 'rgba(255,179,64,0.1)', border: '1px solid rgba(255,179,64,0.25)',
-            borderRadius: 8, padding: '4px 12px', fontSize: 11, color: 'var(--amber)',
-            fontFamily: 'var(--font-body)',
+          <p style={{
+            fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)',
+            marginTop: 8, opacity: 0.7, letterSpacing: 0.3,
           }}>
-            ✦ Showing sample data — add assets and come back daily to see real history
-          </div>
+            Showing sample data · updates automatically as you track daily
+          </p>
         )}
       </div>
 
@@ -257,7 +255,7 @@ export default function Analytics({ assets, netWorthHistory, currency = 'USD' })
             fontWeight: 500, marginBottom: 20, fontFamily: 'var(--font-body)' }}>Value by category</p>
           {barData.length ? (
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={barData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} barSize={22}>
+              <BarChart data={barData} margin={{ top: 0, right: 0, bottom: 24, left: 0 }} barSize={22}>
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'var(--muted)', fontFamily: 'Geologica' }} axisLine={false} tickLine={false} />
                 <YAxis hide />
                 <Tooltip content={renderTooltip} />
