@@ -1,3 +1,5 @@
+import { startCheckout } from '../stripe'
+
 const NAV = [
   {
     id: 'dashboard',
@@ -23,7 +25,7 @@ const NAV = [
   },
 ]
 
-export default function Sidebar({ page, setPage, onSignOut, user }) {
+export default function Sidebar({ page, setPage, onSignOut, user, isPro }) {
   return (
     <div style={{
       width: 240,
@@ -94,32 +96,67 @@ export default function Sidebar({ page, setPage, onSignOut, user }) {
 
       {/* Bottom section */}
       <div style={{ marginTop: 'auto' }}>
-        <div style={{
-          borderRadius: 14, padding: '16px',
-          background: 'var(--bg3)', border: '1px solid var(--border)',
-          position: 'relative', overflow: 'hidden', marginBottom: 12,
-        }}>
+
+        {/* Pro / Free card */}
+        {isPro ? (
           <div style={{
-            position: 'absolute', top: -20, right: -20,
-            width: 80, height: 80, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(0,217,139,0.15), transparent)',
-          }} />
-          <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4, fontFamily: 'var(--font-body)' }}>
-            Current plan
-          </p>
-          <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 12, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
-            Free tier
-          </p>
-          <button style={{
-            width: '100%', padding: '8px', borderRadius: 8,
-            background: 'linear-gradient(135deg, var(--green), var(--teal))',
-            color: '#0a0a0f', fontWeight: 600,
-            border: 'none', cursor: 'pointer',
-            fontFamily: 'var(--font-display)', letterSpacing: 0.5, fontSize: 14,
+            borderRadius: 14, padding: '16px',
+            background: 'linear-gradient(135deg, rgba(0,217,139,0.1), rgba(45,212,191,0.1))',
+            border: '1px solid rgba(0,217,139,0.3)',
+            position: 'relative', overflow: 'hidden', marginBottom: 12,
           }}>
-            Upgrade to Pro →
-          </button>
-        </div>
+            <div style={{
+              position: 'absolute', top: -20, right: -20,
+              width: 80, height: 80, borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(0,217,139,0.2), transparent)',
+            }} />
+            <p style={{ fontSize: 11, color: 'var(--green)', marginBottom: 4, fontFamily: 'var(--font-body)', letterSpacing: 0.5 }}>
+              CURRENT PLAN
+            </p>
+            <p style={{ fontSize: 18, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: 0.3, color: 'var(--green)' }}>
+              Pro ✦
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6, fontFamily: 'var(--font-body)' }}>
+              Unlimited assets · Live prices
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            borderRadius: 14, padding: '16px',
+            background: 'var(--bg3)', border: '1px solid var(--border)',
+            position: 'relative', overflow: 'hidden', marginBottom: 12,
+          }}>
+            <div style={{
+              position: 'absolute', top: -20, right: -20,
+              width: 80, height: 80, borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(0,217,139,0.15), transparent)',
+            }} />
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4, fontFamily: 'var(--font-body)' }}>
+              Current plan
+            </p>
+            <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 4, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
+              Free tier
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 12, fontFamily: 'var(--font-body)' }}>
+              Up to 5 assets
+            </p>
+            <button
+              onClick={() => startCheckout(user?.email)}
+              style={{
+                width: '100%', padding: '8px', borderRadius: 8,
+                background: 'linear-gradient(135deg, var(--green), var(--teal))',
+                color: '#0a0a0f', fontWeight: 600,
+                border: 'none', cursor: 'pointer',
+                fontFamily: 'var(--font-display)', letterSpacing: 0.5, fontSize: 14,
+                transition: 'opacity 0.15s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+            >
+              Upgrade to Pro →
+            </button>
+          </div>
+        )}
 
         {/* User + sign out */}
         <div style={{
@@ -140,7 +177,9 @@ export default function Sidebar({ page, setPage, onSignOut, user }) {
             <p style={{ fontSize: 11, fontWeight: 500, fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {user?.email}
             </p>
-            <p style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Free plan</p>
+            <p style={{ fontSize: 10, color: isPro ? 'var(--green)' : 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+              {isPro ? 'Pro plan ✦' : 'Free plan'}
+            </p>
           </div>
           <button
             onClick={onSignOut}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { startCheckout } from '../stripe'
 
 const CATEGORY_COLORS = {
   'Stocks':      '#4d9fff',
@@ -59,12 +60,10 @@ function AddForm({ onAdd, onClose }) {
 
   function handleTickerInput(val) {
     setTicker(val.toUpperCase())
-    if (category === 'Stocks') {
-      const matches = POPULAR_STOCKS.filter(s =>
-        s.ticker.startsWith(val.toUpperCase()) || s.name.toLowerCase().startsWith(val.toLowerCase())
-      )
-      setSuggestions(matches.slice(0, 4))
-    }
+    const matches = POPULAR_STOCKS.filter(s =>
+      s.ticker.startsWith(val.toUpperCase()) || s.name.toLowerCase().startsWith(val.toLowerCase())
+    )
+    setSuggestions(matches.slice(0, 4))
   }
 
   function handleCryptoInput(val) {
@@ -85,7 +84,7 @@ function AddForm({ onAdd, onClose }) {
     if (!value) return
     if (category === 'Stocks' && !ticker) return
     if (category === 'Crypto' && !ticker) return
-    if ((category === 'Real Estate' || category === 'Retirement' || category === 'Cash') && !name) return
+    if (['Real Estate', 'Retirement', 'Cash'].includes(category) && !name) return
 
     const finalName = category === 'Stocks'
       ? (POPULAR_STOCKS.find(s => s.ticker === ticker)?.name || ticker) + ' (' + ticker + ')'
@@ -98,7 +97,7 @@ function AddForm({ onAdd, onClose }) {
       name: finalName,
       category,
       value: parseFloat(value),
-      ticker: (category === 'Stocks' || category === 'Crypto') ? ticker : null,
+      ticker: ['Stocks', 'Crypto'].includes(category) ? ticker : null,
     })
 
     setTicker('')
@@ -157,8 +156,7 @@ function AddForm({ onAdd, onClose }) {
                   <div key={s.ticker} onClick={() => selectSuggestion(s)} style={{
                     padding: '10px 14px', cursor: 'pointer', fontSize: 13,
                     display: 'flex', justifyContent: 'space-between',
-                    fontFamily: 'var(--font-body)',
-                    transition: 'background 0.1s',
+                    fontFamily: 'var(--font-body)', transition: 'background 0.1s',
                   }}
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -191,8 +189,7 @@ function AddForm({ onAdd, onClose }) {
                   <div key={s.ticker} onClick={() => selectSuggestion(s)} style={{
                     padding: '10px 14px', cursor: 'pointer', fontSize: 13,
                     display: 'flex', justifyContent: 'space-between',
-                    fontFamily: 'var(--font-body)',
-                    transition: 'background 0.1s',
+                    fontFamily: 'var(--font-body)', transition: 'background 0.1s',
                   }}
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
@@ -207,7 +204,7 @@ function AddForm({ onAdd, onClose }) {
         )}
 
         {/* Other categories */}
-        {(category === 'Real Estate' || category === 'Retirement' || category === 'Cash') && (
+        {['Real Estate', 'Retirement', 'Cash'].includes(category) && (
           <input
             placeholder={
               category === 'Real Estate' ? 'Property description' :
@@ -220,7 +217,6 @@ function AddForm({ onAdd, onClose }) {
           />
         )}
 
-        {/* Value field always shown */}
         <input
           placeholder="Value ($)"
           type="number"
@@ -243,15 +239,70 @@ function AddForm({ onAdd, onClose }) {
   )
 }
 
-export default function Assets({ assets, setAssets }) {
+function UpgradeWall({ userEmail }) {
+  return (
+    <div style={{
+      background: 'var(--bg2)', borderRadius: 16, padding: '40px 32px',
+      border: '1px solid rgba(0,217,139,0.2)', marginBottom: 20,
+      textAlign: 'center', position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{
+        position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)',
+        width: 200, height: 200, borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(0,217,139,0.08), transparent)',
+        pointerEvents: 'none',
+      }} />
+      <div style={{ fontSize: 36, marginBottom: 12 }}>✦</div>
+      <h2 style={{ fontSize: 22, fontWeight: 600, fontFamily: 'var(--font-display)', marginBottom: 8 }}>
+        Upgrade to Pro
+      </h2>
+      <p style={{ fontSize: 14, color: 'var(--muted2)', marginBottom: 24, fontFamily: 'var(--font-body)', maxWidth: 360, margin: '0 auto 24px' }}>
+        You've reached the 5 asset limit on the free plan. Upgrade to Pro for unlimited assets, live stock prices, and more.
+      </p>
+      <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 20 }}>
+        {['Unlimited assets', 'Live stock prices', 'Crypto tracking', 'Priority support'].map(f => (
+          <div key={f} style={{
+            fontSize: 12, padding: '5px 12px', borderRadius: 20,
+            background: 'rgba(0,217,139,0.1)', color: 'var(--green)',
+            border: '1px solid rgba(0,217,139,0.2)', fontFamily: 'var(--font-body)',
+          }}>
+            ✓ {f}
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={() => startCheckout(userEmail)}
+        style={{
+          background: 'linear-gradient(135deg, var(--green), var(--teal))',
+          color: '#0a0a0f', padding: '12px 32px', borderRadius: 10,
+          fontSize: 15, fontWeight: 700, border: 'none', cursor: 'pointer',
+          fontFamily: 'var(--font-display)', letterSpacing: 0.5,
+          transition: 'opacity 0.15s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+        onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+      >
+        Upgrade for $9.99/month →
+      </button>
+      <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 12, fontFamily: 'var(--font-body)' }}>
+        Cancel anytime. No hidden fees.
+      </p>
+    </div>
+  )
+}
+
+export default function Assets({ assets, setAssets, isPro, freeLimit }) {
   const [showAdd, setShowAdd] = useState(false)
   const [filter, setFilter] = useState('All')
 
   const total = assets.reduce((s, a) => s + a.value, 0)
   const filtered = filter === 'All' ? assets : assets.filter(a => a.category === filter)
+  const atLimit = !isPro && assets.length >= freeLimit
 
   function addAsset(asset) {
+    if (atLimit) return
     setAssets([...assets, asset])
+    setShowAdd(false)
   }
 
   function removeAsset(id) {
@@ -268,21 +319,25 @@ export default function Assets({ assets, setAssets }) {
             Assets
           </h1>
           <p style={{ fontSize: 14, color: 'var(--muted2)', marginTop: 8, fontFamily: 'var(--font-body)', fontWeight: 300 }}>
-            Manage and track all your holdings
+            {isPro ? 'Unlimited assets — Pro plan' : `${assets.length} of ${freeLimit} assets used — Free plan`}
           </p>
         </div>
         <button
           onClick={() => setShowAdd(!showAdd)}
           style={{
-            background: 'linear-gradient(135deg, var(--green), var(--teal))',
-            color: '#0a0a0f', padding: '10px 22px', borderRadius: 10,
-            fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer',
-            fontFamily: 'var(--font-display)', letterSpacing: 0.5, transition: 'opacity 0.15s',
+            background: atLimit && !showAdd
+              ? 'var(--bg3)'
+              : 'linear-gradient(135deg, var(--green), var(--teal))',
+            color: atLimit && !showAdd ? 'var(--muted)' : '#0a0a0f',
+            padding: '10px 22px', borderRadius: 10,
+            fontSize: 14, fontWeight: 600, border: atLimit && !showAdd ? '1px solid var(--border)' : 'none',
+            cursor: 'pointer', fontFamily: 'var(--font-display)',
+            letterSpacing: 0.5, transition: 'opacity 0.15s',
           }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+          onMouseEnter={e => { if (!atLimit) e.currentTarget.style.opacity = '0.85' }}
           onMouseLeave={e => e.currentTarget.style.opacity = '1'}
         >
-          {showAdd ? '✕ Cancel' : '+ Add asset'}
+          {showAdd ? '✕ Cancel' : atLimit ? '⚡ Upgrade to add more' : '+ Add asset'}
         </button>
       </div>
 
@@ -317,9 +372,33 @@ export default function Assets({ assets, setAssets }) {
         })}
       </div>
 
-      {/* Add form */}
+      {/* Add form or upgrade wall */}
       {showAdd && (
-        <AddForm onAdd={addAsset} onClose={() => setShowAdd(false)} />
+        atLimit
+          ? <UpgradeWall />
+          : <AddForm onAdd={addAsset} onClose={() => setShowAdd(false)} />
+      )}
+
+      {/* Free tier progress bar */}
+      {!isPro && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+              Free plan usage
+            </span>
+            <span style={{ fontSize: 11, color: atLimit ? 'var(--red)' : 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+              {assets.length} / {freeLimit} assets
+            </span>
+          </div>
+          <div style={{ height: 4, background: 'var(--bg3)', borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: 2,
+              width: Math.min((assets.length / freeLimit) * 100, 100) + '%',
+              background: atLimit ? 'var(--red)' : 'linear-gradient(90deg, var(--green), var(--teal))',
+              transition: 'width 0.5s ease',
+            }} />
+          </div>
+        </div>
       )}
 
       {/* Filter pills */}

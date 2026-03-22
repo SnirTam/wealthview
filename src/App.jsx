@@ -11,6 +11,20 @@ export default function App() {
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [isPro, setIsPro] = useState(false)
+
+  // Check if user upgraded after Stripe redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('upgraded') === 'true') {
+      setIsPro(true)
+      localStorage.setItem('wealthview_pro', 'true')
+      window.history.replaceState({}, '', '/')
+    } else {
+      const saved = localStorage.getItem('wealthview_pro')
+      if (saved === 'true') setIsPro(true)
+    }
+  }, [])
 
   // Listen for auth changes
   useEffect(() => {
@@ -75,6 +89,8 @@ export default function App() {
 
   if (!user) return <Login />
 
+  const FREE_LIMIT = 5
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
 
@@ -92,12 +108,24 @@ export default function App() {
         transform: menuOpen ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'transform 0.25s ease',
       }} className="mobile-sidebar">
-        <Sidebar page={page} setPage={p => { setPage(p); setMenuOpen(false) }} onSignOut={handleSignOut} user={user} />
+        <Sidebar
+          page={page}
+          setPage={p => { setPage(p); setMenuOpen(false) }}
+          onSignOut={handleSignOut}
+          user={user}
+          isPro={isPro}
+        />
       </div>
 
       {/* Desktop sidebar */}
       <div className="desktop-sidebar">
-        <Sidebar page={page} setPage={setPage} onSignOut={handleSignOut} user={user} />
+        <Sidebar
+          page={page}
+          setPage={setPage}
+          onSignOut={handleSignOut}
+          user={user}
+          isPro={isPro}
+        />
       </div>
 
       <main style={{
@@ -125,7 +153,14 @@ export default function App() {
 
         <div className="main-content">
           {page === 'dashboard' && <Dashboard assets={assets} />}
-          {page === 'assets'    && <Assets assets={assets} setAssets={saveAssets} />}
+          {page === 'assets' && (
+            <Assets
+              assets={assets}
+              setAssets={saveAssets}
+              isPro={isPro}
+              freeLimit={FREE_LIMIT}
+            />
+          )}
         </div>
       </main>
     </div>
