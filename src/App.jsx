@@ -37,7 +37,7 @@ function TopBar({ page, isPro, userEmail }) {
       position: 'sticky', top: 0, zIndex: 20,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 48px', height: 64,
-      background: 'rgba(10,10,15,0.88)',
+      background: 'var(--bg2)',
       backdropFilter: 'blur(16px)',
       borderBottom: '1px solid var(--border)',
     }} className="desktop-topbar">
