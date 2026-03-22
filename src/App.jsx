@@ -368,23 +368,36 @@ export default function App() {
           <div className="mobile-topbar">
             <button onClick={() => setMenuOpen(true)} style={{
               background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--text)', padding: '4px',
+              padding: '4px',
               display: 'flex', flexDirection: 'column', gap: 5,
             }}>
-              <span style={{ display: 'block', width: 22, height: 2, background: 'var(--text)', borderRadius: 2 }} />
-              <span style={{ display: 'block', width: 22, height: 2, background: 'var(--text)', borderRadius: 2 }} />
-              <span style={{ display: 'block', width: 22, height: 2, background: 'var(--text)', borderRadius: 2 }} />
+              <span style={{ display: 'block', width: 22, height: 2, background: '#f0f0f5', borderRadius: 2 }} />
+              <span style={{ display: 'block', width: 22, height: 2, background: '#f0f0f5', borderRadius: 2 }} />
+              <span style={{ display: 'block', width: 22, height: 2, background: '#f0f0f5', borderRadius: 2 }} />
             </button>
-            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18 }}>Wealthview</p>
-            <button
-              onClick={() => setShowAddAsset(true)}
-              style={{
-                background: 'linear-gradient(135deg, var(--green), var(--teal))',
-                color: '#0a0a0f', border: 'none', borderRadius: 8,
-                padding: '6px 12px', fontSize: 12, fontWeight: 700,
-                cursor: 'pointer', fontFamily: 'var(--font-display)',
-              }}
-            >+ Add</button>
+            <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, color: '#f0f0f5' }}>Wealthview</p>
+            {isPro ? (
+              <button
+                onClick={() => setShowAddAsset(true)}
+                style={{
+                  background: 'linear-gradient(135deg, var(--green), var(--teal))',
+                  color: '#0a0a0f', border: 'none', borderRadius: 8,
+                  padding: '6px 14px', fontSize: 12, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'var(--font-display)',
+                }}
+              >+ Add</button>
+            ) : (
+              <button
+                onClick={() => startCheckout(user?.email)}
+                style={{
+                  background: 'linear-gradient(135deg, var(--green), var(--teal))',
+                  color: '#0a0a0f', border: 'none', borderRadius: 8,
+                  padding: '6px 12px', fontSize: 11, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'var(--font-display)',
+                  whiteSpace: 'nowrap',
+                }}
+              >✦ Upgrade</button>
+            )}
           </div>
 
           {/* Desktop sticky topbar */}

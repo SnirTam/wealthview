@@ -151,8 +151,8 @@ a { text-decoration: none; color: inherit; }
     align-items: center;
     justify-content: space-between;
     padding: 14px 20px;
-    background: rgba(10,10,15,0.95);
-    border-bottom: 1px solid var(--border);
+    background: #0d0d14;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
     position: sticky;
     top: 0;
     z-index: 30;
