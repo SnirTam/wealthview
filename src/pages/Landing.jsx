@@ -372,8 +372,8 @@ export default function Landing({ onGetStarted, onSignIn }) {
                 <span style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: 30, height: 30, borderRadius: '50%',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.22)',
+                  background: 'rgba(255,255,255,0.1)',
                   flexShrink: 0,
                 }}>
                   <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
@@ -817,10 +817,10 @@ function PricingCard({ title, price, period, features, ctaLabel, onCta, isPro })
         onClick={onCta}
         style={{
           width: '100%', padding: '13px 0', borderRadius: 12,
-          border: isPro ? 'none' : '1px solid rgba(255,255,255,0.1)',
+          border: isPro ? 'none' : '1px solid rgba(255,255,255,0.22)',
           background: isPro
             ? 'linear-gradient(135deg, #00d98b, #2dd4bf)'
-            : 'rgba(255,255,255,0.04)',
+            : 'rgba(255,255,255,0.1)',
           color: isPro ? '#09090f' : '#eeeef5',
           fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-body)',
           cursor: 'pointer', letterSpacing: 0.2,

@@ -75,7 +75,9 @@ function AddGoalModal({ onAdd, onClose }) {
             New goal
           </p>
           <button onClick={onClose} style={{
-            background: 'transparent', border: 'none', color: 'var(--muted)', fontSize: 20, cursor: 'pointer',
+            background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border2)',
+            color: 'var(--text)', fontSize: 18, cursor: 'pointer',
+            width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>×</button>
         </div>
 

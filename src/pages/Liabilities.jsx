@@ -74,8 +74,9 @@ function AddLiabilityModal({ onAdd, onClose }) {
             </p>
           </div>
           <button onClick={onClose} style={{
-            background: 'transparent', border: 'none', color: 'var(--muted)',
-            fontSize: 22, cursor: 'pointer', lineHeight: 1,
+            background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border2)',
+            color: 'var(--text)', fontSize: 18, cursor: 'pointer',
+            width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>×</button>
         </div>
 
@@ -125,8 +126,8 @@ function AddLiabilityModal({ onAdd, onClose }) {
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onClose} style={{
             flex: 1, padding: '11px', borderRadius: 10,
-            background: 'var(--bg3)', color: 'var(--muted2)',
-            border: '1px solid var(--border)', cursor: 'pointer',
+            background: 'rgba(255,255,255,0.06)', color: 'var(--text)',
+            border: '1px solid var(--border2)', cursor: 'pointer',
             fontFamily: 'var(--font-body)', fontSize: 14,
           }}>
             Cancel
@@ -191,8 +192,9 @@ function EditLiabilityModal({ liability, onSave, onClose }) {
             </p>
           </div>
           <button onClick={onClose} style={{
-            background: 'transparent', border: 'none', color: 'var(--muted)',
-            fontSize: 22, cursor: 'pointer', lineHeight: 1,
+            background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border2)',
+            color: 'var(--text)', fontSize: 18, cursor: 'pointer',
+            width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>×</button>
         </div>
 

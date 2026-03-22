@@ -247,8 +247,8 @@ export default function Login() {
                 marginTop: 24,
                 background: otp.length === 6
                   ? 'linear-gradient(135deg, var(--green), var(--teal))'
-                  : 'var(--bg3)',
-                color: otp.length === 6 ? '#0a0a0f' : 'var(--muted)',
+                  : 'rgba(255,255,255,0.06)',
+                color: otp.length === 6 ? '#0a0a0f' : 'var(--text)',
                 fontWeight: 700, fontSize: 14,
                 border: otp.length === 6 ? 'none' : '1px solid var(--border2)',
                 borderRadius: 10,
