@@ -531,6 +531,7 @@ export default function Landing({ onGetStarted, onSignIn }) {
         <div style={{
           display: 'flex', gap: 24, maxWidth: 820, margin: '0 auto',
           flexWrap: 'wrap', justifyContent: 'center',
+          alignItems: 'stretch',
         }}>
           <PricingCard
             title="Free" price="$0" period="/ month"
@@ -758,6 +759,7 @@ function PricingCard({ title, price, period, features, ctaLabel, onCta, isPro })
       onMouseLeave={() => setHov(false)}
       style={{
         flex: '1 1 300px', maxWidth: 360,
+        display: 'flex', flexDirection: 'column',
         background: isPro
           ? 'linear-gradient(160deg, rgba(0,217,139,0.07) 0%, rgba(9,9,15,0.95) 50%)'
           : 'rgba(255,255,255,0.02)',
@@ -796,7 +798,7 @@ function PricingCard({ title, price, period, features, ctaLabel, onCta, isPro })
         <span style={{ fontSize: 13, color: '#5a5a70', fontFamily: 'var(--font-body)' }}>{period}</span>
       </div>
 
-      <ul style={{ listStyle: 'none', marginBottom: 32, display: 'flex', flexDirection: 'column', gap: 11 }}>
+      <ul style={{ listStyle: 'none', marginBottom: 32, display: 'flex', flexDirection: 'column', gap: 11, flex: 1 }}>
         {features.map(f => (
           <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
             <span style={{
