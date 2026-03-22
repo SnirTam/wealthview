@@ -49,8 +49,15 @@ a { text-decoration: none; color: inherit; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
 
+/* ─── Animations ──────────────────────────────────────────────────────────── */
+
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pageFade {
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
@@ -68,6 +75,12 @@ a { text-decoration: none; color: inherit; }
   animation: fadeUp 0.5s ease both;
 }
 
+.page-transition {
+  animation: pageFade 0.25s ease both;
+}
+
+/* ─── Layout ──────────────────────────────────────────────────────────────── */
+
 /* Desktop sidebar always visible */
 .desktop-sidebar {
   display: block;
@@ -83,32 +96,47 @@ a { text-decoration: none; color: inherit; }
 }
 
 .main-content {
-  padding: 40px 48px;
+  padding: 36px 48px;
 }
 
-/* Tablet */
+/* ─── Tablet ──────────────────────────────────────────────────────────────── */
+
 @media (max-width: 1024px) {
   .main-content {
-    padding: 32px 28px;
+    padding: 28px 28px;
+  }
+
+  .desktop-topbar {
+    padding: 0 28px;
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
   }
 }
 
-/* Mobile */
+/* ─── Mobile ──────────────────────────────────────────────────────────────── */
+
 @media (max-width: 768px) {
   .desktop-sidebar {
     display: none;
+  }
+
+  .desktop-topbar {
+    display: none !important;
   }
 
   .mobile-topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
-    background: var(--bg2);
+    padding: 14px 20px;
+    background: rgba(10,10,15,0.95);
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
     z-index: 30;
+    backdrop-filter: blur(12px);
   }
 
   .main-content {
@@ -157,9 +185,22 @@ a { text-decoration: none; color: inherit; }
     overflow-x: auto;
     padding-bottom: 4px;
     flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch;
   }
 
   .holdings-bar {
     display: none !important;
+  }
+}
+
+/* ─── Small mobile ────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr !important;
   }
 }

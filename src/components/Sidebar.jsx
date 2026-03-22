@@ -1,5 +1,3 @@
-import { startCheckout } from '../stripe'
-
 const NAV = [
   {
     id: 'dashboard',
@@ -24,6 +22,16 @@ const NAV = [
     )
   },
 ]
+
+function getInitials(email) {
+  if (!email) return '?'
+  const local = email.split('@')[0]
+  const parts = local.split(/[._\-+]/)
+  if (parts.length >= 2 && parts[0].length > 0 && parts[1].length > 0) {
+    return (parts[0][0] + parts[1][0]).toUpperCase()
+  }
+  return local.slice(0, 2).toUpperCase()
+}
 
 export default function Sidebar({ page, setPage, onSignOut, user, isPro }) {
   return (
@@ -137,24 +145,9 @@ export default function Sidebar({ page, setPage, onSignOut, user, isPro }) {
             <p style={{ fontSize: 18, fontWeight: 600, marginBottom: 4, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
               Free tier
             </p>
-            <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 12, fontFamily: 'var(--font-body)' }}>
+            <p style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
               Up to 5 assets
             </p>
-            <button
-              onClick={() => startCheckout(user?.email)}
-              style={{
-                width: '100%', padding: '8px', borderRadius: 8,
-                background: 'linear-gradient(135deg, var(--green), var(--teal))',
-                color: '#0a0a0f', fontWeight: 600,
-                border: 'none', cursor: 'pointer',
-                fontFamily: 'var(--font-display)', letterSpacing: 0.5, fontSize: 14,
-                transition: 'opacity 0.15s',
-              }}
-              onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-              onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-            >
-              Upgrade to Pro →
-            </button>
           </div>
         )}
 
@@ -166,12 +159,13 @@ export default function Sidebar({ page, setPage, onSignOut, user, isPro }) {
           background: 'var(--bg3)',
         }}>
           <div style={{
-            width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+            width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
             background: 'linear-gradient(135deg, var(--purple), var(--blue))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 12, fontWeight: 600, color: '#fff',
+            fontSize: 11, fontWeight: 700, color: '#fff',
+            letterSpacing: 0.5,
           }}>
-            {user?.email?.[0].toUpperCase()}
+            {getInitials(user?.email)}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ fontSize: 11, fontWeight: 500, fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
