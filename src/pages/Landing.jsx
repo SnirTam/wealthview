@@ -669,7 +669,7 @@ function GreenBtn({ children, onClick, large }) {
         color: '#09090f',
         border: 'none',
         borderRadius: large ? 14 : 10,
-        padding: large ? '14px 28px' : '9px 18px',
+        padding: large ? '14px 28px' : '7px 18px',
         fontSize: large ? 16 : 13,
         fontWeight: 700,
         fontFamily: 'var(--font-body)',
