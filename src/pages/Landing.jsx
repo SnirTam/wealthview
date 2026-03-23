@@ -145,12 +145,12 @@ const FeatureIcons = {
 }
 
 const FEATURES = [
-  { icon: 'chart',     color: '#00d98b', title: 'Live prices',        desc: 'Real-time stock & crypto prices pulled automatically. Never manually update a value again.' },
-  { icon: 'balance',   color: '#5b9cf6', title: 'True net worth',     desc: 'Assets minus liabilities — the number that actually matters for your financial health.' },
-  { icon: 'target',    color: '#a78bfa', title: 'Goals & milestones', desc: 'Set savings targets, track progress, and get celebrated every time you hit a new milestone.' },
-  { icon: 'analytics', color: '#f59e0b', title: 'Deep analytics',     desc: 'Allocation breakdown, growth trends, and performance charts that tell the full story.' },
-  { icon: 'lock',      color: '#2dd4bf', title: 'Secure & private',   desc: 'Bank-level encryption. Your data is never sold, shared, or used for ads. Ever.' },
-  { icon: 'mobile',    color: '#ff4d6d', title: 'Mobile ready',       desc: 'Access your wealth dashboard from any device, anywhere. Your portfolio in your pocket.' },
+  { icon: 'chart',     color: '#00d98b', title: 'Live stock & crypto prices',  desc: 'Our net worth calculator with live prices pulls real-time stock and crypto prices automatically — no manual updates, ever.' },
+  { icon: 'balance',   color: '#5b9cf6', title: 'Assets and liabilities in one place', desc: 'Track all your assets and liabilities in one place. Subtract what you owe from what you own for your true financial picture.' },
+  { icon: 'target',    color: '#a78bfa', title: 'Goals & milestones',          desc: 'Set savings targets on your personal finance dashboard and get celebrated every time you hit a new milestone.' },
+  { icon: 'analytics', color: '#f59e0b', title: 'Portfolio tracker analytics', desc: 'A full portfolio tracker for stocks and crypto with allocation breakdowns, growth trends, and performance charts.' },
+  { icon: 'lock',      color: '#2dd4bf', title: 'Secure & private',            desc: 'Bank-level encryption. Your personal finance data is never sold, shared, or used for ads. Ever.' },
+  { icon: 'mobile',    color: '#ff4d6d', title: 'Mobile ready',                desc: 'Access your free net worth tracker from any device, anywhere. Your complete wealth dashboard fits in your pocket.' },
 ]
 
 const STEPS = [
@@ -254,12 +254,12 @@ export default function Landing({ onGetStarted, onSignIn }) {
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(0,217,139,0.08)', border: '1px solid rgba(0,217,139,0.22)', borderRadius: 100, padding: '6px 14px', marginBottom: 24, fontSize: 12, color: '#00d98b', fontWeight: 600, letterSpacing: 0.4 }}>
               <span style={{ fontSize: 10 }}>✦</span> Live prices · Real net worth · Privacy first
             </div>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(40px, 5.5vw, 66px)', fontWeight: 800, lineHeight: 1.06, letterSpacing: -2, marginBottom: 20, color: '#eeeef5' }}>
-              Know exactly<br />
-              <span style={{ background: 'linear-gradient(130deg, #00d98b 0%, #2dd4bf 50%, #5b9cf6 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>where you stand</span>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(36px, 5vw, 60px)', fontWeight: 800, lineHeight: 1.06, letterSpacing: -2, marginBottom: 20, color: '#eeeef5' }}>
+              Free Net Worth Tracker —<br />
+              <span style={{ background: 'linear-gradient(130deg, #00d98b 0%, #2dd4bf 50%, #5b9cf6 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Assets, Liabilities & Live Prices</span>
             </h1>
             <p style={{ fontSize: 'clamp(15px, 1.8vw, 19px)', color: '#8888a0', lineHeight: 1.7, marginBottom: 32, maxWidth: 460 }}>
-              Track every asset, every liability, every price — all in one beautiful dashboard. Your real net worth, always up to date.
+              The free net worth tracker that calculates your real net worth by connecting assets and liabilities in one place. Track stocks and crypto in real time with live prices, automatically updated.
             </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24, alignItems: 'center' }}>
               <GreenBtn onClick={onGetStarted} large>Start for free</GreenBtn>
@@ -391,6 +391,15 @@ export default function Landing({ onGetStarted, onSignIn }) {
             </p>
           </FadeIn>
           <FadeIn delay={220}><GreenBtn onClick={onGetStarted} large>Create your free account</GreenBtn></FadeIn>
+        </div>
+      </section>
+
+      {/* ── FAQ ── */}
+      <section id="faq" style={{ padding: 'clamp(48px, 6vh, 72px) clamp(20px, 5vw, 80px)' }}>
+        <FadeIn><SectionLabel>FAQ</SectionLabel></FadeIn>
+        <FadeIn delay={80}><h2 style={h2Style}>Frequently asked questions</h2></FadeIn>
+        <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <FaqAccordion />
         </div>
       </section>
 
@@ -526,6 +535,61 @@ function FeatureCard({ icon, color, title, desc }) {
       <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: '#eeeef5', marginBottom: 8, letterSpacing: -0.1 }}>{title}</h3>
       <p style={{ fontSize: 13, color: '#8888a0', lineHeight: 1.65 }}>{desc}</p>
     </div>
+  )
+}
+
+const FAQ_ITEMS = [
+  {
+    q: 'Is WealthView really free?',
+    a: 'Yes. WealthView is free to start with no credit card required. The free plan lets you track up to 5 assets, set goals, and see your net worth chart. Upgrade to Pro for unlimited assets, live stock and crypto prices, and full analytics.',
+  },
+  {
+    q: 'How does the net worth calculator work?',
+    a: 'WealthView adds up everything you own — stocks, crypto, real estate, retirement accounts, and cash — then subtracts your liabilities like mortgages, loans, and credit card balances. The result is your true net worth, updated automatically whenever prices change.',
+  },
+  {
+    q: 'Can I track stocks and crypto in real time?',
+    a: 'Yes. Pro subscribers get live stock and crypto prices pulled automatically. Just enter your ticker symbols and share counts — WealthView does the rest. Prices refresh every time you open the dashboard.',
+  },
+  {
+    q: 'Is my financial data secure?',
+    a: 'Your data is encrypted at rest and in transit. WealthView never sells, shares, or uses your financial information for advertising. You can delete your account and all associated data at any time.',
+  },
+  {
+    q: 'What types of assets can I track?',
+    a: 'WealthView supports stocks, crypto, real estate, retirement accounts (401k, IRA), cash, and a custom "Others" category for anything else — cars, jewelry, a business, or any asset with value.',
+  },
+]
+
+function FaqAccordion() {
+  const [open, setOpen] = useState(null)
+  return (
+    <>
+      {FAQ_ITEMS.map((item, i) => (
+        <div key={i} style={{
+          background: 'rgba(255,255,255,0.02)', border: `1px solid ${open === i ? 'rgba(0,217,139,0.25)' : 'rgba(255,255,255,0.07)'}`,
+          borderRadius: 12, overflow: 'hidden', transition: 'border-color 0.2s',
+        }}>
+          <button
+            onClick={() => setOpen(open === i ? null : i)}
+            style={{
+              width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '18px 22px', background: 'none', border: 'none', cursor: 'pointer',
+              color: '#eeeef5', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15,
+              textAlign: 'left', gap: 12,
+            }}
+          >
+            <span>{item.q}</span>
+            <span style={{ flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: open === i ? 'rgba(0,217,139,0.15)' : 'rgba(255,255,255,0.06)', border: `1px solid ${open === i ? 'rgba(0,217,139,0.3)' : 'rgba(255,255,255,0.1)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: open === i ? '#00d98b' : '#8888a0', fontSize: 16, lineHeight: 1, transition: 'all 0.2s' }}>
+              {open === i ? '−' : '+'}
+            </span>
+          </button>
+          {open === i && (
+            <p style={{ padding: '0 22px 18px', fontSize: 14, color: '#8888a0', lineHeight: 1.7, margin: 0 }}>{item.a}</p>
+          )}
+        </div>
+      ))}
+    </>
   )
 }
 
