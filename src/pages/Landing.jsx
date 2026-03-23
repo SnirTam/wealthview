@@ -40,7 +40,7 @@ function MiniChart() {
   const toStr = arr => arr.map(([x, y]) => `${x},${y}`).join(' ')
   const filled = [...pts, [pts[pts.length - 1][0], 60], [0, 60]]
   return (
-    <svg viewBox="0 0 168 60" style={{ width: '100%', height: 60, display: 'block' }} preserveAspectRatio="none">
+    <svg viewBox="0 0 168 60" style={{ width: '100%', height: 60, display: 'block' }} preserveAspectRatio="none" role="img" aria-label="WealthView net worth growth sparkline chart">
       <defs>
         <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#00d98b" stopOpacity="0.22" />
@@ -58,7 +58,7 @@ function MiniChart() {
 /* ── App mockup ── */
 function AppMockup() {
   return (
-    <div style={{
+    <div role="img" aria-label="WealthView automated net worth dashboard showing $248,930 total net worth with real-time stock and crypto prices" style={{
       background: 'linear-gradient(145deg, #0e0e16 0%, #13131d 100%)',
       border: '1px solid rgba(255,255,255,0.09)',
       borderRadius: 24, overflow: 'hidden',
@@ -145,24 +145,24 @@ const FeatureIcons = {
 }
 
 const FEATURES = [
-  { icon: 'chart',     color: '#00d98b', title: 'Live stock & crypto prices',  desc: 'Our net worth calculator with live prices pulls real-time stock and crypto prices automatically — no manual updates, ever.' },
-  { icon: 'balance',   color: '#5b9cf6', title: 'Assets and liabilities in one place', desc: 'Track all your assets and liabilities in one place. Subtract what you owe from what you own for your true financial picture.' },
-  { icon: 'target',    color: '#a78bfa', title: 'Goals & milestones',          desc: 'Set savings targets on your personal finance dashboard and get celebrated every time you hit a new milestone.' },
-  { icon: 'analytics', color: '#f59e0b', title: 'Portfolio tracker analytics', desc: 'A full portfolio tracker for stocks and crypto with allocation breakdowns, growth trends, and performance charts.' },
-  { icon: 'lock',      color: '#2dd4bf', title: 'Secure & private',            desc: 'Bank-level encryption. Your personal finance data is never sold, shared, or used for ads. Ever.' },
-  { icon: 'mobile',    color: '#ff4d6d', title: 'Mobile ready',                desc: 'Access your free net worth tracker from any device, anywhere. Your complete wealth dashboard fits in your pocket.' },
+  { icon: 'chart',     color: '#00d98b', title: 'Real-time stock & crypto tracking',   desc: "WealthView's real-time net worth tracker pulls live stock and crypto prices automatically — your dashboard always reflects what your portfolio is actually worth right now." },
+  { icon: 'balance',   color: '#5b9cf6', title: 'All assets & liabilities in one place', desc: 'The all-in-one wealth aggregator that ends spreadsheet chaos. Track assets in one place — stocks, crypto, real estate, cash — and subtract liabilities for your true net worth.' },
+  { icon: 'target',    color: '#a78bfa', title: 'Goals & wealth milestones',           desc: 'Set savings targets directly inside your automated net worth dashboard and get celebrated every time you cross a new milestone.' },
+  { icon: 'analytics', color: '#f59e0b', title: 'Automated net worth dashboard',       desc: 'Your automated net worth dashboard charts historical growth, allocation breakdowns, and category performance — no manual entry, no stale numbers.' },
+  { icon: 'lock',      color: '#2dd4bf', title: 'Secure & private',                   desc: 'Bank-level encryption. Your wealth data is never sold, shared, or used for ads. WealthView is built on privacy — full stop.' },
+  { icon: 'mobile',    color: '#ff4d6d', title: 'Mobile-ready wealth tracker',        desc: 'Access your real-time net worth tracker from any device. Your all-in-one wealth aggregator fits in your pocket, updating live wherever you are.' },
 ]
 
 const STEPS = [
-  { n: '01', title: 'Add your assets',     desc: 'Stocks, crypto, real estate, retirement, cash — add anything in seconds. Live prices auto-fill.' },
-  { n: '02', title: 'Track liabilities',   desc: 'Mortgages, loans, credit cards. Your real net worth is assets minus what you owe.' },
-  { n: '03', title: 'Watch it grow',       desc: 'Historical charts, goal tracking, and milestones celebrate every step of your journey.' },
+  { n: '01', title: 'Add your assets',     desc: 'Track assets in one place — stocks, crypto, real estate, retirement, cash. WealthView auto-fills real-time prices the moment you add a ticker. No spreadsheet columns to update.' },
+  { n: '02', title: 'Track liabilities',   desc: 'Add mortgages, loans, and credit cards. WealthView subtracts them automatically — giving you a real net worth figure, not just an asset total.' },
+  { n: '03', title: 'Watch it grow',       desc: 'Your automated net worth dashboard updates in real time with historical charts, goal tracking, and milestone celebrations every step of the way.' },
 ]
 
 const TESTIMONIALS = [
-  { quote: 'Finally I know my real net worth after subtracting my mortgage. Game changer.', name: 'Sarah K.', age: 34 },
-  { quote: 'The live crypto prices save me so much time. Everything in one place.',          name: 'Marcus T.', age: 28 },
-  { quote: 'Set up in 5 minutes. Best financial decision I made this year.',                 name: 'David R.', age: 41 },
+  { quote: 'I used to track everything in a spreadsheet. WealthView replaced it overnight — I finally know my real net worth after subtracting my mortgage.',     name: 'Sarah K.', age: 34 },
+  { quote: 'The real-time net worth tracker is a game changer. Live crypto prices, stocks, and cash all consolidated in one place. Nothing else comes close.',    name: 'Marcus T.', age: 28 },
+  { quote: 'Set up my automated net worth dashboard in 5 minutes. Best financial decision I made this year.',                                                    name: 'David R.', age: 41 },
 ]
 
 const ASSET_TYPES = [
@@ -252,14 +252,14 @@ export default function Landing({ onGetStarted, onSignIn }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(40px, 6vw, 80px)', width: '100%', maxWidth: 1200, margin: '0 auto', flexWrap: 'wrap' }}>
           <div style={{ flex: '0 0 clamp(300px, 52%, 600px)', minWidth: 300 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(0,217,139,0.08)', border: '1px solid rgba(0,217,139,0.22)', borderRadius: 100, padding: '6px 14px', marginBottom: 24, fontSize: 12, color: '#00d98b', fontWeight: 600, letterSpacing: 0.4 }}>
-              <span style={{ fontSize: 10 }}>✦</span> Live prices · Real net worth · Privacy first
+              <span style={{ fontSize: 10 }}>✦</span> Real-time prices · All assets in one place · No spreadsheets
             </div>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(36px, 5vw, 60px)', fontWeight: 800, lineHeight: 1.06, letterSpacing: -2, marginBottom: 20, color: '#eeeef5' }}>
-              Free Net Worth Tracker —<br />
-              <span style={{ background: 'linear-gradient(130deg, #00d98b 0%, #2dd4bf 50%, #5b9cf6 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Assets, Liabilities & Live Prices</span>
+              Real-Time Net Worth Tracker —<br />
+              <span style={{ background: 'linear-gradient(130deg, #00d98b 0%, #2dd4bf 50%, #5b9cf6 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Your All-in-One Wealth Dashboard</span>
             </h1>
             <p style={{ fontSize: 'clamp(15px, 1.8vw, 19px)', color: '#8888a0', lineHeight: 1.7, marginBottom: 32, maxWidth: 460 }}>
-              The free net worth tracker that calculates your real net worth by connecting assets and liabilities in one place. Track stocks and crypto in real time with live prices, automatically updated.
+              Stop updating spreadsheets manually. WealthView is the all-in-one wealth aggregator that builds your automated net worth dashboard — consolidating stocks, crypto, real estate, and liabilities with real-time prices.
             </p>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24, alignItems: 'center' }}>
               <GreenBtn onClick={onGetStarted} large>Start for free</GreenBtn>
@@ -320,7 +320,7 @@ export default function Landing({ onGetStarted, onSignIn }) {
       {/* ── HOW IT WORKS ── */}
       <section id="how-it-works" style={{ padding: 'clamp(48px, 6vh, 72px) clamp(20px, 5vw, 80px)', position: 'relative' }}>
         <FadeIn><SectionLabel>How it works</SectionLabel></FadeIn>
-        <FadeIn delay={80}><h2 style={h2Style}>Up and running in 2 minutes</h2></FadeIn>
+        <FadeIn delay={80}><h2 style={h2Style}>From spreadsheet to real-time dashboard in 2 minutes</h2></FadeIn>
         <div style={{ display: 'flex', gap: 'clamp(16px, 3vw, 40px)', maxWidth: 900, margin: '0 auto', flexWrap: 'wrap', justifyContent: 'center' }}>
           {STEPS.map((s, i) => (
             <FadeIn key={s.n} delay={i * 100} style={{ flex: '1 1 220px', maxWidth: 280 }}>
@@ -335,7 +335,7 @@ export default function Landing({ onGetStarted, onSignIn }) {
       {/* ── FEATURES ── */}
       <section id="features" style={{ padding: 'clamp(48px, 6vh, 72px) clamp(20px, 5vw, 80px)', background: 'rgba(255,255,255,0.015)', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <FadeIn><SectionLabel>Features</SectionLabel></FadeIn>
-        <FadeIn delay={80}><h2 style={h2Style}>Everything you need to build wealth</h2></FadeIn>
+        <FadeIn delay={80}><h2 style={h2Style}>Your all-in-one wealth aggregator</h2></FadeIn>
         <div className="features-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18, maxWidth: 1100, margin: '0 auto' }}>
           {FEATURES.map((f, i) => (
             <FadeIn key={f.title} delay={i * 60}>
@@ -382,12 +382,12 @@ export default function Landing({ onGetStarted, onSignIn }) {
           </FadeIn>
           <FadeIn delay={80}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(30px, 4vw, 50px)', fontWeight: 800, letterSpacing: -1.5, lineHeight: 1.1, marginBottom: 16, color: '#eeeef5' }}>
-              Your financial picture<br />starts now
+              Your automated net worth dashboard<br />starts now
             </h2>
           </FadeIn>
           <FadeIn delay={160}>
             <p style={{ fontSize: 16, color: '#8888a0', marginBottom: 32, maxWidth: 400, margin: '0 auto 32px' }}>
-              Free to start. No credit card needed. Your complete wealth dashboard in under 2 minutes.
+              Free to start. No credit card needed. Your all-in-one wealth aggregator is ready in under 2 minutes.
             </p>
           </FadeIn>
           <FadeIn delay={220}><GreenBtn onClick={onGetStarted} large>Create your free account</GreenBtn></FadeIn>
@@ -411,7 +411,7 @@ export default function Landing({ onGetStarted, onSignIn }) {
               <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, #00d98b, #2dd4bf)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#09090f', fontFamily: 'var(--font-display)' }}>W</div>
               <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: '#eeeef5' }}>WealthView</span>
             </div>
-            <p style={{ fontSize: 12, color: '#5a5a70', maxWidth: 260, lineHeight: 1.5 }}>Built for people who take their finances seriously.</p>
+            <p style={{ fontSize: 12, color: '#5a5a70', maxWidth: 260, lineHeight: 1.5 }}>The all-in-one real-time net worth tracker for people who take their finances seriously.</p>
           </div>
 
           <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -541,23 +541,23 @@ function FeatureCard({ icon, color, title, desc }) {
 const FAQ_ITEMS = [
   {
     q: 'Is WealthView really free?',
-    a: 'Yes. WealthView is free to start with no credit card required. The free plan lets you track up to 5 assets, set goals, and see your net worth chart. Upgrade to Pro for unlimited assets, live stock and crypto prices, and full analytics.',
+    a: 'Yes. WealthView is free to start with no credit card required. The free plan lets you track up to 5 assets, set goals, and see your net worth chart. Upgrade to Pro for unlimited assets, real-time stock and crypto prices, and the full automated net worth dashboard — including analytics and price alerts.',
   },
   {
-    q: 'How does the net worth calculator work?',
-    a: 'WealthView adds up everything you own — stocks, crypto, real estate, retirement accounts, and cash — then subtracts your liabilities like mortgages, loans, and credit card balances. The result is your true net worth, updated automatically whenever prices change.',
+    q: 'What makes WealthView an all-in-one wealth aggregator?',
+    a: 'WealthView consolidates every asset class — stocks, crypto, real estate, retirement accounts, and cash — alongside your liabilities in a single automated net worth dashboard. Instead of copying numbers from five different apps into a spreadsheet, everything lives in one place and updates automatically.',
   },
   {
     q: 'Can I track stocks and crypto in real time?',
-    a: 'Yes. Pro subscribers get live stock and crypto prices pulled automatically. Just enter your ticker symbols and share counts — WealthView does the rest. Prices refresh every time you open the dashboard.',
+    a: 'Yes. WealthView is a real-time net worth tracker. Pro subscribers get live stock and crypto prices pulled automatically — just add your tickers and share counts, and your total net worth recalculates instantly. No manual price lookups, no stale data.',
   },
   {
-    q: 'Is my financial data secure?',
-    a: 'Your data is encrypted at rest and in transit. WealthView never sells, shares, or uses your financial information for advertising. You can delete your account and all associated data at any time.',
+    q: 'Why should I use WealthView instead of a spreadsheet?',
+    a: 'Spreadsheets require manual price updates, break when formulas drift, and give you no single source of truth. WealthView\'s automated net worth dashboard does all of that automatically — live prices, instant calculations, charts, goals, and alerts — so you spend zero time on maintenance and more time building wealth.',
   },
   {
-    q: 'What types of assets can I track?',
-    a: 'WealthView supports stocks, crypto, real estate, retirement accounts (401k, IRA), cash, and a custom "Others" category for anything else — cars, jewelry, a business, or any asset with value.',
+    q: 'What types of assets can I track in one place?',
+    a: 'WealthView supports stocks, crypto, real estate, retirement accounts (401k, IRA), cash, and a custom category for anything else — cars, jewelry, a business, or any asset with value. Track all your assets in one place with a single consolidated net worth number.',
   },
 ]
 
