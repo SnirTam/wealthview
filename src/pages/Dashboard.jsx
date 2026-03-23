@@ -8,6 +8,8 @@ import ShareCard from '../components/ShareCard'
 
 const CATEGORY_COLORS = { Stocks:'#4d9fff', Crypto:'#ffb340', 'Real Estate':'#00d98b', Retirement:'#a78bfa', Cash:'#6b6b80', Others:'#9b8ea8' }
 const CATEGORY_ICONS  = { Stocks:'📈', Crypto:'₿', 'Real Estate':'🏠', Retirement:'🏦', Cash:'💵', Others:'📦' }
+const CHART_PERIODS = ['1W','1M','3M','6M','1Y','All']
+const CHART_PERIOD_DAYS = { '1W':7,'1M':30,'3M':90,'6M':180,'1Y':365,'All':Infinity }
 const POPULAR_STOCKS  = [
   {ticker:'AAPL',name:'Apple'},{ticker:'NVDA',name:'NVIDIA'},{ticker:'MSFT',name:'Microsoft'},
   {ticker:'GOOGL',name:'Google'},{ticker:'AMZN',name:'Amazon'},{ticker:'TSLA',name:'Tesla'},
@@ -43,23 +45,56 @@ function getGreeting(name='') {
   return name?`${base}, ${name} ${emoji}`:`${base} ${emoji}`
 }
 
-function buildChartData(history, total) {
+function buildChartData(history, total, period='1M') {
   if(!history.length) return null
-  const byMonth={}
-  history.forEach(({value,recorded_at})=>{ const m=recorded_at.slice(0,7); byMonth[m]=value })
-  const months=Object.keys(byMonth).sort().slice(-5)
-  const points=months.map(m=>({month:new Date(m+'-02').toLocaleDateString('en-US',{month:'short'}),value:byMonth[m]}))
-  const thisMonth=new Date().toISOString().slice(0,7)
-  months[months.length-1]===thisMonth?points[points.length-1]={month:'Now',value:total}:points.push({month:'Now',value:total})
+  // Filter by period
+  let filtered=history
+  if(period!=='All') {
+    const days=CHART_PERIOD_DAYS[period]
+    const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-days)
+    filtered=history.filter(h=>new Date(h.recorded_at)>=cutoff)
+  }
+  if(!filtered.length) filtered=history.slice(-2)
+  // Group: daily for ≤1M, weekly for ≤3M, monthly otherwise
+  const useDays=CHART_PERIOD_DAYS[period]<=30
+  const useWeeks=CHART_PERIOD_DAYS[period]<=90
+  const byBucket={}
+  filtered.forEach(({value,recorded_at})=>{
+    let key
+    if(useDays) key=recorded_at.slice(0,10)
+    else if(useWeeks) {
+      const d=new Date(recorded_at); d.setDate(d.getDate()-d.getDay()); key=d.toISOString().slice(0,10)
+    } else key=recorded_at.slice(0,7)
+    byBucket[key]=value
+  })
+  const buckets=Object.keys(byBucket).sort()
+  const labelFmt=useDays||useWeeks
+    ?(k=>new Date(k).toLocaleDateString('en-US',{month:'short',day:'numeric'}))
+    :(k=>new Date(k+'-02').toLocaleDateString('en-US',{month:'short'}))
+  const points=buckets.map(k=>({month:labelFmt(k),value:byBucket[k]}))
+  // Replace or append "Now"
+  const lastBucket=buckets[buckets.length-1]
+  const nowKey=useDays?new Date().toISOString().slice(0,10):useWeeks?
+    (()=>{const d=new Date();d.setDate(d.getDate()-d.getDay());return d.toISOString().slice(0,10)})()
+    :new Date().toISOString().slice(0,7)
+  lastBucket===nowKey?points[points.length-1]={month:'Now',value:total}:points.push({month:'Now',value:total})
   return points.length>=2?points:null
 }
-function generateDashboardSample(total) {
+function generateDashboardSample(total, period='1M') {
   const base=total>0?total:88000
+  if(period==='1W') return ['Mon','Tue','Wed','Thu','Fri','Now'].map((m,i)=>({month:m,value:Math.round(base*[0.97,0.975,0.98,0.985,0.992,1][i])}))
+  if(period==='3M') return ['Jan','Feb','Mar','Now'].map((m,i)=>({month:m,value:Math.round(base*[0.88,0.92,0.96,1][i])}))
+  if(period==='6M') return ['Sep','Oct','Nov','Dec','Jan','Now'].map((m,i)=>({month:m,value:Math.round(base*[0.82,0.87,0.91,0.94,0.97,1][i])}))
+  if(period==='1Y') return ['Mar','May','Jul','Sep','Nov','Now'].map((m,i)=>({month:m,value:Math.round(base*[0.71,0.78,0.84,0.90,0.96,1][i])}))
+  if(period==='All') return ['2022','2023','2024','Now'].map((m,i)=>({month:m,value:Math.round(base*[0.45,0.62,0.82,1][i])}))
   return ['Aug','Sep','Oct','Nov','Dec','Now'].map((month,i)=>({month,value:Math.round(base*[0.71,0.78,0.84,0.88,0.95,1][i])}))
 }
-function calcMonthChange(history, total) {
+function calcPeriodChange(history, total, period) {
   if(!history.length) return null
-  const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-30)
+  const days=CHART_PERIOD_DAYS[period]
+  const cutoff=new Date()
+  if(days!==Infinity) cutoff.setDate(cutoff.getDate()-days)
+  else cutoff.setFullYear(cutoff.getFullYear()-20)
   const older=history.filter(h=>new Date(h.recorded_at)<=cutoff)
   return older.length?total-older[older.length-1].value:null
 }
@@ -211,6 +246,7 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
   const [cryptoLastUpdated,setCryptoLastUpdated]=useState(null)
   const [clock,setClock]=useState(new Date())
   const [showShareCard,setShowShareCard]=useState(false)
+  const [chartPeriod,setChartPeriod]=useState('1M')
 
   useEffect(()=>{ const t=setInterval(()=>setClock(new Date()),1000); return()=>clearInterval(t) },[])
 
@@ -219,12 +255,12 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
   const totalLiabilities=liabilities.reduce((s,l)=>s+(l.balance||0),0)
   const netWorth=total-totalLiabilities
   const history=netWorthHistory||[]
-  const chartData=buildChartData(history,total)
-  const monthChange=calcMonthChange(history,total)
+  const chartData=buildChartData(history,total,chartPeriod)
+  const periodChange=calcPeriodChange(history,total,chartPeriod)
   const lastUpdated=stockLastUpdated||cryptoLastUpdated
 
   // Chart Y domain — start near min so growth looks dramatic
-  const dashboardDisplayData=chartData||generateDashboardSample(total)
+  const dashboardDisplayData=chartData||generateDashboardSample(total,chartPeriod)
   const chartMin=(() => {
     const vals=dashboardDisplayData.map(d=>d.value)
     const min=Math.min(...vals), max=Math.max(...vals)
@@ -371,24 +407,38 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
       <div className="chart-grid" style={{display:'grid',gridTemplateColumns:'3fr 2fr',gap:16,marginBottom:24}}>
         <div className="fade-up" style={{background:'var(--bg2)',borderRadius:16,padding:'24px',border:'1px solid var(--border)',animationDelay:'200ms'}}>
 
-          {/* ── Unified chart header — value + dollar change + % badge, all in one line ── */}
-          <div style={{marginBottom:24}}>
-            <p style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase',letterSpacing:1.5,fontWeight:500,marginBottom:8,fontFamily:'var(--font-body)'}}>Net worth over time</p>
-            <div style={{display:'flex',alignItems:'baseline',gap:12,flexWrap:'wrap'}}>
-              <p style={{fontSize:26,fontWeight:600,fontFamily:'var(--font-display)',letterSpacing:0.3,color:netWorth<0?'var(--red)':'var(--text)',lineHeight:1}}>
-                {formatAmount(netWorth,currency)}
-              </p>
-              {monthChange!==null&&(
-                <>
-                  <span style={{fontSize:15,fontWeight:600,fontFamily:'var(--font-display)',color:monthChange>=0?'var(--green)':'var(--red)'}}>
-                    {monthChange>=0?'+':''}{formatAmount(monthChange,currency)}
-                  </span>
-                  <span style={{fontSize:11,padding:'2px 8px',borderRadius:12,fontFamily:'var(--font-body)',fontWeight:600,background:monthChange>=0?'rgba(0,217,139,0.12)':'rgba(255,77,109,0.12)',color:monthChange>=0?'var(--green)':'var(--red)',border:`1px solid ${monthChange>=0?'rgba(0,217,139,0.2)':'rgba(255,77,109,0.2)'}`}}>
-                    {monthChange>=0?'+':''}{total>0?((monthChange/total)*100).toFixed(1):0}%
-                  </span>
-                  <span style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--font-body)'}}>this month</span>
-                </>
-              )}
+          {/* ── Chart header: value + change + period selector ── */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20,flexWrap:'wrap',gap:10}}>
+            <div>
+              <p style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase',letterSpacing:1.5,fontWeight:500,marginBottom:8,fontFamily:'var(--font-body)'}}>Net worth over time</p>
+              <div style={{display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap'}}>
+                <p style={{fontSize:26,fontWeight:600,fontFamily:'var(--font-display)',letterSpacing:0.3,color:netWorth<0?'var(--red)':'var(--text)',lineHeight:1}}>
+                  {formatAmount(netWorth,currency)}
+                </p>
+                {periodChange!==null&&(
+                  <>
+                    <span style={{fontSize:14,fontWeight:600,fontFamily:'var(--font-display)',color:periodChange>=0?'var(--green)':'var(--red)'}}>
+                      {periodChange>=0?'+':''}{formatAmount(periodChange,currency)}
+                    </span>
+                    <span style={{fontSize:11,padding:'2px 8px',borderRadius:12,fontFamily:'var(--font-body)',fontWeight:600,background:periodChange>=0?'rgba(0,217,139,0.12)':'rgba(255,77,109,0.12)',color:periodChange>=0?'var(--green)':'var(--red)',border:`1px solid ${periodChange>=0?'rgba(0,217,139,0.2)':'rgba(255,77,109,0.2)'}`}}>
+                      {periodChange>=0?'+':''}{total>0?((periodChange/total)*100).toFixed(1):0}%
+                    </span>
+                    <span style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--font-body)'}}>in {chartPeriod}</span>
+                  </>
+                )}
+              </div>
+            </div>
+            <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+              {CHART_PERIODS.map(p=>(
+                <button key={p} onClick={()=>setChartPeriod(p)} style={{
+                  padding:'4px 10px',borderRadius:7,fontSize:11,
+                  fontWeight:chartPeriod===p?600:400,
+                  background:chartPeriod===p?'var(--green)':'transparent',
+                  color:chartPeriod===p?'#0a0a0f':'var(--muted)',
+                  border:chartPeriod===p?'1px solid var(--green)':'1px solid transparent',
+                  cursor:'pointer',transition:'all 0.15s',fontFamily:'var(--font-body)',
+                }}>{p}</button>
+              ))}
             </div>
           </div>
 

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, Cell } from 'recharts'
 import { formatAmount } from './Dashboard'
 
 const CATEGORY_COLORS = { Stocks:'#4d9fff', Crypto:'#ffb340', 'Real Estate':'#00d98b', Retirement:'#a78bfa', Cash:'#6b6b80' }
@@ -59,17 +59,6 @@ export default function Analytics({assets,netWorthHistory,currency='USD'}) {
   const isSample=!netWorthHistory?.length||netWorthHistory.length<2
   const filtered=useMemo(()=>filterByPeriod(rawHistory,period),[rawHistory,period])
 
-  const chartData=useMemo(()=>sampleEvenly(filtered,14).map(h=>({
-    label:formatLabel(h.recorded_at,period), value:Math.round(h.value),
-  })),[filtered,period])
-
-  const chartMin=useMemo(()=>{
-    if(!chartData.length) return 0
-    const min=Math.min(...chartData.map(d=>d.value))
-    const max=Math.max(...chartData.map(d=>d.value))
-    return Math.max(0,Math.floor((min-(max-min)*0.15)/1000)*1000)
-  },[chartData])
-
   const barData=useMemo(()=>Object.keys(CATEGORY_COLORS).map(cat=>({
     name:cat, value:assets.filter(a=>a.category===cat).reduce((s,a)=>s+(a.value||0),0),
   })).filter(d=>d.value>0),[assets])
@@ -85,12 +74,6 @@ export default function Analytics({assets,netWorthHistory,currency='USD'}) {
     })
   },[filtered,period,assets])
 
-  // All unified period stats
-  const periodFirstVal=filtered[0]?.value||total
-  const periodChange=total-periodFirstVal
-  const periodChangePct=periodFirstVal>0?((periodChange/periodFirstVal)*100).toFixed(1):null
-  const isPositive=periodChange>=0
-
   const allTimeHigh=useMemo(()=>Math.max(total,...rawHistory.map(h=>h.value)),[rawHistory,total])
   const bestCat=barData.length?barData.reduce((best,d)=>d.value>best.value?d:best,barData[0]):null
 
@@ -101,10 +84,24 @@ export default function Analytics({assets,netWorthHistory,currency='USD'}) {
     <div style={{maxWidth:1600}}>
 
       {/* Header */}
-      <div className="fade-up" style={{marginBottom:32}}>
-        <h1 style={{fontSize:32,fontWeight:600,fontFamily:'var(--font-display)',letterSpacing:0.3}}>Analytics</h1>
-        <p style={{fontSize:14,color:'var(--muted2)',marginTop:8,fontFamily:'var(--font-body)',fontWeight:300}}>Deep-dive into your wealth over time.</p>
-        {isSample&&<p style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--font-body)',marginTop:8,opacity:0.7}}>Showing sample data · updates automatically as you track daily</p>}
+      <div className="fade-up" style={{marginBottom:32,display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
+        <div>
+          <h1 style={{fontSize:32,fontWeight:600,fontFamily:'var(--font-display)',letterSpacing:0.3}}>Analytics</h1>
+          <p style={{fontSize:14,color:'var(--muted2)',marginTop:8,fontFamily:'var(--font-body)',fontWeight:300}}>Deep-dive into your wealth over time.</p>
+          {isSample&&<p style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--font-body)',marginTop:8,opacity:0.7}}>Showing sample data · updates automatically as you track daily</p>}
+        </div>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          {PERIODS.map(p=>(
+            <button key={p} onClick={()=>setPeriod(p)} style={{
+              padding:'5px 12px',borderRadius:8,fontSize:12,
+              fontWeight:period===p?600:400,
+              background:period===p?'var(--green)':'var(--bg2)',
+              color:period===p?'#0a0a0f':'var(--muted)',
+              border:period===p?'1px solid var(--green)':'1px solid var(--border2)',
+              cursor:'pointer',transition:'all 0.15s',fontFamily:'var(--font-body)',
+            }}>{p}</button>
+          ))}
+        </div>
       </div>
 
       {/* 2 stat cards — removed Total Growth since chart handles it */}
@@ -132,62 +129,6 @@ export default function Analytics({assets,netWorthHistory,currency='USD'}) {
             <p style={{fontSize:12,color:s.subColor,marginTop:10,fontFamily:'var(--font-body)'}}>{s.sub}</p>
           </div>
         ))}
-      </div>
-
-      {/* Net worth chart — unified header with ALL info in one place */}
-      <div className="fade-up" style={{...cardStyle,marginBottom:24,animationDelay:'120ms'}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24,flexWrap:'wrap',gap:12}}>
-
-          {/* Left: value + change all in one block */}
-          <div>
-            <p style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase',letterSpacing:1.5,fontWeight:500,marginBottom:8,fontFamily:'var(--font-body)'}}>Net worth over time</p>
-            <div style={{display:'flex',alignItems:'baseline',gap:16,flexWrap:'wrap'}}>
-              <p style={{fontSize:28,fontWeight:600,fontFamily:'var(--font-display)',letterSpacing:0.3,lineHeight:1}}>{formatAmount(total,currency)}</p>
-              {periodChangePct!=null&&(
-                <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  {/* Dollar change */}
-                  <span style={{fontSize:16,fontWeight:600,fontFamily:'var(--font-display)',color:isPositive?'var(--green)':'var(--red)'}}>
-                    {isPositive?'+':''}{formatAmount(periodChange,currency)}
-                  </span>
-                  {/* % change badge */}
-                  <span style={{fontSize:12,fontWeight:600,padding:'3px 10px',borderRadius:20,fontFamily:'var(--font-body)',background:isPositive?'var(--green-dim)':'var(--red-dim)',color:isPositive?'var(--green)':'var(--red)',border:`1px solid ${isPositive?'rgba(0,217,139,0.2)':'rgba(255,77,109,0.2)'}`}}>
-                    {isPositive?'+':''}{periodChangePct}%
-                  </span>
-                  <span style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--font-body)'}}>in {period}</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right: period selector */}
-          <div style={{display:'flex',gap:6}}>
-            {PERIODS.map(p=>(
-              <button key={p} onClick={()=>setPeriod(p)} style={{
-                padding:'5px 12px',borderRadius:8,fontSize:12,
-                fontWeight:period===p?600:400,
-                background:period===p?'var(--green)':'var(--bg3)',
-                color:period===p?'#0a0a0f':'var(--muted)',
-                border:period===p?'1px solid var(--green)':'1px solid var(--border)',
-                cursor:'pointer',transition:'all 0.15s',fontFamily:'var(--font-body)',
-              }}>{p}</button>
-            ))}
-          </div>
-        </div>
-
-        <ResponsiveContainer width="100%" height={240}>
-          <AreaChart data={chartData} margin={{top:5,right:0,bottom:0,left:0}}>
-            <defs>
-              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#00d98b" stopOpacity={0.3}/>
-                <stop offset="100%" stopColor="#00d98b" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="label" tick={{fontSize:11,fill:'var(--muted)',fontFamily:'Geologica'}} axisLine={false} tickLine={false}/>
-            <YAxis hide domain={[chartMin,'auto']}/>
-            <Tooltip content={renderTooltip}/>
-            <Area type="monotone" dataKey="value" stroke="var(--green)" strokeWidth={2.5} fill="url(#areaGrad)" dot={false} activeDot={{r:4,fill:'var(--green)',strokeWidth:0}}/>
-          </AreaChart>
-        </ResponsiveContainer>
       </div>
 
       {/* Bar + Line charts */}
