@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 
-const POLYGON_KEY = 'UqQavmhMSGECPDiz2I_sjIOKpz70NOdk'
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
-const LS_KEY = 'wv_stock_cache'
+const CACHE_TTL = 15 * 60 * 1000 // 15 minutes
+const LS_KEY = 'stock_prices_cache'
+const CORS = 'https://corsproxy.io/?'
 
 function loadCache() {
   try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} }
@@ -14,14 +14,25 @@ function saveCache(c) {
 // Initialise from localStorage so prices survive a page reload
 let priceCache = loadCache()
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)) }
+async function fetchTicker(ticker) {
+  const url = `${CORS}https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`
+  const res = await fetch(url)
+  const data = await res.json()
+  const meta = data?.chart?.result?.[0]?.meta
+  if (!meta) return null
+  const price = meta.regularMarketPrice
+  const previousClose = meta.previousClose ?? meta.chartPreviousClose
+  if (!price || !previousClose) return null
+  const change = parseFloat((((price - previousClose) / previousClose) * 100).toFixed(2))
+  return { price, previousClose, change }
+}
 
 export function useStockPrices(assets) {
   const [prices, setPrices] = useState(() => {
     const now = Date.now()
     const valid = {}
     Object.entries(priceCache).forEach(([ticker, e]) => {
-      if (e.ts && now - e.ts < CACHE_TTL) valid[ticker] = { price: e.price, change: e.change }
+      if (e.ts && now - e.ts < CACHE_TTL) valid[ticker] = { price: e.price, change: e.change, previousClose: e.previousClose }
     })
     return valid
   })
@@ -39,43 +50,37 @@ export function useStockPrices(assets) {
     async function fetchAll() {
       const now = Date.now()
       const results = {}
-      let fetched = false
 
-      for (let i = 0; i < tickers.length; i++) {
-        const ticker = tickers[i]
-        const cached = priceCache[ticker]
-
-        // Use cache if fresh
-        if (cached && now - (cached.ts || 0) < CACHE_TTL) {
-          results[ticker] = { price: cached.price, change: cached.change }
-          continue
-        }
-
-        try {
-          const res = await fetch(
-            `https://api.polygon.io/v2/aggs/ticker/${ticker}/prev?adjusted=true&apiKey=${POLYGON_KEY}`
-          )
-          if (res.status === 429) {
-            // Rate limited — use stale cache if available
-            if (cached) results[ticker] = { price: cached.price, change: cached.change }
-            await sleep(2000) // back off longer on 429
-            continue
+      const settled = await Promise.allSettled(
+        tickers.map(async ticker => {
+          const cached = priceCache[ticker]
+          if (cached && now - (cached.ts || 0) < CACHE_TTL) {
+            return { ticker, data: { price: cached.price, change: cached.change, previousClose: cached.previousClose }, fromCache: true }
           }
-          const data = await res.json()
-          if (data.results?.[0]) {
-            const r = data.results[0]
-            const change = parseFloat((((r.c - r.o) / r.o) * 100).toFixed(2))
-            const entry = { price: r.c, change, ts: now }
-            priceCache[ticker] = entry
-            results[ticker] = { price: r.c, change }
+          try {
+            const data = await fetchTicker(ticker)
+            return { ticker, data, fromCache: false }
+          } catch {
+            return { ticker, data: null, fromCache: false }
+          }
+        })
+      )
+
+      let fetched = false
+      for (const result of settled) {
+        if (result.status !== 'fulfilled') continue
+        const { ticker, data, fromCache } = result.value
+        if (data) {
+          results[ticker] = data
+          if (!fromCache) {
+            priceCache[ticker] = { ...data, ts: now }
             fetched = true
           }
-        } catch {
-          if (cached) results[ticker] = { price: cached.price, change: cached.change }
+        } else {
+          // fetch failed — use stale cache if available
+          const cached = priceCache[ticker]
+          if (cached) results[ticker] = { price: cached.price, change: cached.change, previousClose: cached.previousClose }
         }
-
-        // 500 ms delay between each request
-        if (i < tickers.length - 1) await sleep(500)
       }
 
       if (fetched) saveCache(priceCache)
