@@ -14,6 +14,7 @@ import Goals from './pages/Goals'
 import Watchlist from './pages/Watchlist'
 import Alerts from './pages/Alerts'
 import DCA from './pages/DCA'
+import Cashflow from './pages/Cashflow'
 import Login from './pages/Login'
 import Landing from './pages/Landing'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -30,6 +31,7 @@ const PAGE_TITLES = {
   watchlist: 'Watchlist',
   alerts: 'Alerts',
   dca: 'DCA Plans',
+  cashflow: 'Cashflow',
 }
 
 const MILESTONES = [10000, 50000, 100000, 250000, 500000, 1000000, 5000000, 10000000]
@@ -526,6 +528,12 @@ export default function App() {
                 )}
                 {page === 'dca' && (
                   <DCA
+                    user={user}
+                    currency={currency}
+                  />
+                )}
+                {page === 'cashflow' && (
+                  <Cashflow
                     user={user}
                     currency={currency}
                   />

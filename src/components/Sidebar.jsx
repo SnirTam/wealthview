@@ -83,6 +83,18 @@ const NAV_GROUPS = [
         ),
       },
       {
+        id: 'cashflow',
+        label: 'Cashflow',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M2 8h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M8 2v12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+            <path d="M5 5l3-3 3 3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M11 11l-3 3-3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"/>
+          </svg>
+        ),
+      },
+      {
         id: 'dca',
         label: 'DCA Plans',
         icon: (
