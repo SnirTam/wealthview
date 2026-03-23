@@ -159,11 +159,7 @@ const STEPS = [
   { n: '03', title: 'Watch it grow',       desc: 'Your automated net worth dashboard updates in real time with historical charts, goal tracking, and milestone celebrations every step of the way.' },
 ]
 
-const TESTIMONIALS = [
-  { quote: 'I used to track everything in a spreadsheet. WealthView replaced it overnight — I finally know my real net worth after subtracting my mortgage.',     name: 'Sarah K.', age: 34 },
-  { quote: 'The real-time net worth tracker is a game changer. Live crypto prices, stocks, and cash all consolidated in one place. Nothing else comes close.',    name: 'Marcus T.', age: 28 },
-  { quote: 'Set up my automated net worth dashboard in 5 minutes. Best financial decision I made this year.',                                                    name: 'David R.', age: 41 },
-]
+const TESTIMONIALS = []
 
 const ASSET_TYPES = [
   { label: 'Stocks',      icon: '📈', color: '#5b9cf6' },
@@ -340,19 +336,6 @@ export default function Landing({ onGetStarted, onSignIn }) {
           {FEATURES.map((f, i) => (
             <FadeIn key={f.title} delay={i * 60}>
               <FeatureCard {...f} />
-            </FadeIn>
-          ))}
-        </div>
-      </section>
-
-      {/* ── TESTIMONIALS ── */}
-      <section style={{ padding: 'clamp(48px, 6vh, 72px) clamp(20px, 5vw, 80px)' }}>
-        <FadeIn><SectionLabel>Testimonials</SectionLabel></FadeIn>
-        <FadeIn delay={80}><h2 style={h2Style}>People who took control</h2></FadeIn>
-        <div className="testimonials-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, maxWidth: 1000, margin: '0 auto' }}>
-          {TESTIMONIALS.map((t, i) => (
-            <FadeIn key={t.name} delay={i * 80}>
-              <TestimonialCard {...t} />
             </FadeIn>
           ))}
         </div>
