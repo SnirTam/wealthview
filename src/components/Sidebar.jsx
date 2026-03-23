@@ -82,6 +82,19 @@ const NAV_GROUPS = [
           </svg>
         ),
       },
+      {
+        id: 'dca',
+        label: 'DCA Plans',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M3 13V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M6.5 13V6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M10 13V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M13.5 13V4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M2 5l3-2.5 3.5 2.5 3.5-3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" opacity="0.6"/>
+          </svg>
+        ),
+      },
     ],
   },
 ]
