@@ -161,9 +161,10 @@ export default function App() {
       // On fresh sign-in, save session for biometric and offer enrollment
       if (event === 'SIGNED_IN' && session && u) {
         saveBiometricSession(session.access_token, session.refresh_token)
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
         const alreadyEnrolled = getBiometricCredential()?.userId === u.id
         const promptedThisSession = sessionStorage.getItem('wv_bio_prompted')
-        if (!alreadyEnrolled && !promptedThisSession) {
+        if (isMobile && !alreadyEnrolled && !promptedThisSession) {
           const available = await isBiometricAvailable()
           if (available) {
             sessionStorage.setItem('wv_bio_prompted', '1')

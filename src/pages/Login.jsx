@@ -92,8 +92,10 @@ export default function Login() {
   const [biometricReady, setBiometricReady] = useState(false)
   const [biometricLoading, setBiometricLoading] = useState(false)
 
-  // Check if Face ID is available + enrolled on this device
+  // Check if Face ID is available + enrolled — mobile only
   useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+    if (!isMobile) return
     const cred = getBiometricCredential()
     if (!cred) return
     isBiometricAvailable().then(ok => setBiometricReady(ok))
