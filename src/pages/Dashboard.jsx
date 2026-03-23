@@ -266,6 +266,11 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
     const min=Math.min(...vals), max=Math.max(...vals)
     return Math.max(0,Math.floor((min-(max-min)*0.15)/1000)*1000)
   })()
+  const chartFirst=dashboardDisplayData[0]?.value||0
+  const chartLast=dashboardDisplayData[dashboardDisplayData.length-1]?.value||0
+  const chartChg=chartLast-chartFirst
+  const chartChgPct=chartFirst>0?(chartChg/chartFirst)*100:0
+  const chartChgPos=chartChg>=0
 
   const pieData=[
     ...Object.keys(CATEGORY_COLORS).map(cat=>({
@@ -411,21 +416,17 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:20,flexWrap:'wrap',gap:10}}>
             <div>
               <p style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase',letterSpacing:1.5,fontWeight:500,marginBottom:8,fontFamily:'var(--font-body)'}}>Net worth over time</p>
-              <div style={{display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap'}}>
-                <p style={{fontSize:26,fontWeight:600,fontFamily:'var(--font-display)',letterSpacing:0.3,color:netWorth<0?'var(--red)':'var(--text)',lineHeight:1}}>
-                  {formatAmount(netWorth,currency)}
-                </p>
-                {periodChange!==null&&(
-                  <>
-                    <span style={{fontSize:14,fontWeight:600,fontFamily:'var(--font-display)',color:periodChange>=0?'var(--green)':'var(--red)'}}>
-                      {periodChange>=0?'+':''}{formatAmount(periodChange,currency)}
-                    </span>
-                    <span style={{fontSize:11,padding:'2px 8px',borderRadius:12,fontFamily:'var(--font-body)',fontWeight:600,background:periodChange>=0?'rgba(0,217,139,0.12)':'rgba(255,77,109,0.12)',color:periodChange>=0?'var(--green)':'var(--red)',border:`1px solid ${periodChange>=0?'rgba(0,217,139,0.2)':'rgba(255,77,109,0.2)'}`}}>
-                      {periodChange>=0?'+':''}{total>0?((periodChange/total)*100).toFixed(1):0}%
-                    </span>
-                    <span style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--font-body)'}}>in {chartPeriod}</span>
-                  </>
-                )}
+              <p style={{fontSize:26,fontWeight:600,fontFamily:'var(--font-display)',letterSpacing:0.3,color:netWorth<0?'var(--red)':'var(--text)',lineHeight:1,marginBottom:8}}>
+                {formatAmount(netWorth,currency)}
+              </p>
+              <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                <span style={{fontSize:15,fontWeight:700,fontFamily:'var(--font-display)',color:chartChgPos?'var(--green)':'var(--red)'}}>
+                  {chartChgPos?'+':''}{formatAmount(Math.abs(Math.round(chartChg)),currency)}
+                </span>
+                <span style={{fontSize:12,fontWeight:700,padding:'3px 10px',borderRadius:20,fontFamily:'var(--font-body)',background:chartChgPos?'rgba(0,217,139,0.12)':'rgba(255,77,109,0.12)',color:chartChgPos?'var(--green)':'var(--red)',border:`1px solid ${chartChgPos?'rgba(0,217,139,0.25)':'rgba(255,77,109,0.25)'}`}}>
+                  {chartChgPos?'▲':'▼'} {chartChgPos?'+':''}{chartChgPct.toFixed(2)}%
+                </span>
+                <span style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--font-body)'}}>in {chartPeriod}</span>
               </div>
             </div>
             <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
