@@ -415,7 +415,7 @@ export default function Goals({ assets, user, netWorthHistory, currency = 'USD' 
           </button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 16 }}>
+        <div className="goals-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
           {goals.map((goal, i) => (
             <div key={goal.id} className="fade-up" style={{ animationDelay: i * 60 + 'ms' }}>
               <GoalCard

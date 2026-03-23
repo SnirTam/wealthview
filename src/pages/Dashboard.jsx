@@ -150,7 +150,7 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
           </div>
         ):(
           <>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:20}}>
+            <div className="modal-category-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:20}}>
               {CATEGORIES.map(cat=>(
                 <button key={cat} onClick={()=>{setCategory(cat);setTicker('');setName('');setSuggestions([])}} style={{padding:'10px 4px',borderRadius:10,fontSize:11,fontWeight:category===cat?600:400,background:category===cat?CATEGORY_COLORS[cat]+'20':'var(--bg3)',color:category===cat?CATEGORY_COLORS[cat]:'var(--muted)',border:category===cat?'1px solid '+CATEGORY_COLORS[cat]+'50':'1px solid var(--border)',cursor:'pointer',transition:'all 0.15s',fontFamily:'var(--font-body)',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
                   <span style={{fontSize:18}}>{CATEGORY_ICONS[cat]}</span>{cat}
@@ -290,7 +290,7 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
   const lastUpdatedLabel=lastUpdated?'· Updated '+lastUpdated.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}):null
 
   const headerButtons=(
-    <div style={{display:'flex',alignItems:'center',gap:10,paddingTop:4}}>
+    <div className="header-buttons" style={{display:'flex',alignItems:'center',gap:10,paddingTop:4}}>
       {currencySelector}
       <button onClick={()=>setShowShareCard(true)} style={{display:'flex',alignItems:'center',gap:5,background:'var(--bg2)',color:'var(--muted2)',padding:'7px 14px',borderRadius:8,fontSize:12,fontWeight:500,border:'1px solid var(--border2)',cursor:'pointer',fontFamily:'var(--font-body)',transition:'all 0.15s'}}
         onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.25)';e.currentTarget.style.background='var(--bg3)'}}
@@ -307,13 +307,13 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
   if(assets.length===0) return (
     <div style={{maxWidth:1600}}>
       {showAddAsset&&<AddAssetModal onAdd={handleAddAsset} onClose={handleCloseModal} isPro={isPro} assetsCount={0} freeLimit={freeLimit} userEmail={user?.email} prefill={prefillAsset} key={prefillAsset?.ticker||'modal'}/>}
-      <div className="fade-up" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:36}}>
+      <div className="fade-up dashboard-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:36}}>
         <div>
           <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
             <p style={{fontSize:12,color:'var(--muted)',fontFamily:'var(--font-body)'}}>{dateStr}</p>
             <p style={{fontSize:12,color:'var(--muted)',fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums'}}>{timeStr}</p>
           </div>
-          <h1 style={{fontSize:32,fontWeight:600,fontFamily:'var(--font-display)',letterSpacing:0.3}}>{getGreeting(firstName)}</h1>
+          <h1 className="dashboard-h1" style={{fontSize:32,fontWeight:600,fontFamily:'var(--font-display)',letterSpacing:0.3}}>{getGreeting(firstName)}</h1>
           <p style={{fontSize:14,color:'var(--muted2)',marginTop:8,fontFamily:'var(--font-body)',fontWeight:300}}>Welcome to WealthView — let's get started.</p>
         </div>
         {headerButtons}
@@ -328,16 +328,16 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
 
       {/* Header */}
       <div className="fade-up" style={{marginBottom:36}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+        <div className="dashboard-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
           <div>
-            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,flexWrap:'wrap'}}>
               <div style={{width:7,height:7,borderRadius:'50%',background:'var(--green)',animation:'pulse-green 2s infinite'}}/>
               <span style={{fontSize:10,color:'var(--green)',fontWeight:500,letterSpacing:1.5,textTransform:'uppercase',fontFamily:'var(--font-body)'}}>Live</span>
               {lastUpdatedLabel&&<span style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-body)'}}>{lastUpdatedLabel}</span>}
               <span style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-body)',marginLeft:4}}>{dateStr}</span>
               <span style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-body)',fontVariantNumeric:'tabular-nums'}}>· {timeStr}</span>
             </div>
-            <h1 style={{fontSize:32,fontWeight:600,lineHeight:1.1,fontFamily:'var(--font-display)',letterSpacing:0.3}}>{getGreeting(firstName)}</h1>
+            <h1 className="dashboard-h1" style={{fontSize:32,fontWeight:600,lineHeight:1.1,fontFamily:'var(--font-display)',letterSpacing:0.3}}>{getGreeting(firstName)}</h1>
             <p style={{fontSize:14,color:'var(--muted2)',marginTop:8,fontFamily:'var(--font-body)',fontWeight:300}}>Here's your complete financial picture.</p>
           </div>
           {headerButtons}
@@ -455,10 +455,10 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
           const livePrice=asset.category==='Stocks'&&asset.ticker&&stockPrices[asset.ticker]?stockPrices[asset.ticker].price:null
           const dollarChange=change!=null?asset.value*(change/100):null
           return (
-            <div key={asset.id} style={{display:'flex',alignItems:'center',padding:'14px 24px',borderBottom:i<topAssets.length-1?'1px solid var(--border)':'none',transition:'background 0.15s',cursor:'default'}}
+            <div key={asset.id} className="holdings-row" style={{display:'flex',alignItems:'center',padding:'14px 24px',borderBottom:i<topAssets.length-1?'1px solid var(--border)':'none',transition:'background 0.15s',cursor:'default'}}
               onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.02)'}
               onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-              <div style={{width:28,fontSize:12,color:'var(--muted)',fontWeight:500,fontFamily:'var(--font-display)'}}>#{i+1}</div>
+              <div className="holdings-rank" style={{width:28,fontSize:12,color:'var(--muted)',fontWeight:500,fontFamily:'var(--font-display)'}}>#{i+1}</div>
               <AssetLogo ticker={asset.ticker} category={asset.category} size={36} style={{marginRight:14}}/>
               <div style={{flex:1}}>
                 <p style={{fontSize:14,fontWeight:500,fontFamily:'var(--font-body)'}}>{asset.name}</p>
@@ -467,7 +467,7 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
                   {livePrice&&<span style={{marginLeft:8,color:'var(--muted2)'}}>{formatAmount(livePrice,currency)} / share</span>}
                 </p>
               </div>
-              <div style={{textAlign:'right',marginRight:24}}>
+              <div className="holdings-value" style={{textAlign:'right',marginRight:24}}>
                 <p style={{fontSize:15,fontWeight:600,fontFamily:'var(--font-display)',letterSpacing:0.3}}>{formatAmount(asset.value,currency)}</p>
                 {change!=null?(
                   <p style={{fontSize:11,marginTop:2,fontFamily:'var(--font-body)',color:change>=0?'var(--green)':'var(--red)'}}>

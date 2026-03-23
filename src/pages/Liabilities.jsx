@@ -320,7 +320,7 @@ export default function Liabilities({ liabilities, setLiabilities, user, currenc
       </div>
 
       {/* Category summary cards */}
-      <div className="fade-up" style={{
+      <div className="fade-up summary-grid" style={{
         display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)',
         gap: 12, marginBottom: 24, animationDelay: '80ms',
       }}>
@@ -426,12 +426,12 @@ export default function Liabilities({ liabilities, setLiabilities, user, currenc
       </div>
 
       {/* Liabilities table */}
-      <div className="fade-up" style={{
+      <div className="fade-up table-scroll" style={{
         background: 'var(--bg2)', borderRadius: 16,
         border: '1px solid var(--border)', overflow: 'hidden', animationDelay: '200ms',
       }}>
         {/* Table header */}
-        <div style={{
+        <div className="liabilities-table-header" style={{
           display: 'grid', gridTemplateColumns: '1fr 140px 150px 120px 100px 90px',
           padding: '12px 24px', borderBottom: '1px solid var(--border)',
           fontSize: 10, color: 'var(--muted)', fontWeight: 500,
@@ -467,6 +467,7 @@ export default function Liabilities({ liabilities, setLiabilities, user, currenc
           return (
             <div
               key={item.id}
+              className="liabilities-table-row"
               style={{
                 display: 'grid', gridTemplateColumns: '1fr 140px 150px 120px 100px 90px',
                 alignItems: 'center', padding: '16px 24px',

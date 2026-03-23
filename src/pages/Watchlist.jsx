@@ -368,13 +368,13 @@ export default function Watchlist({ currency = 'USD', onAddToPortfolio }) {
         </div>
       ) : (
         // Watchlist table
-        <div className="fade-up" style={{
+        <div className="fade-up table-scroll" style={{
           background: 'var(--bg2)', borderRadius: 16,
           border: '1px solid var(--border)', overflow: 'hidden',
           animationDelay: '120ms',
         }}>
           {/* Table header */}
-          <div style={{
+          <div className="watchlist-table-header" style={{
             display: 'grid', gridTemplateColumns: '1fr 120px 110px 100px 130px 80px',
             padding: '12px 20px', borderBottom: '1px solid var(--border)',
             fontSize: 10, color: 'var(--muted)', fontWeight: 500,
@@ -393,7 +393,7 @@ export default function Watchlist({ currency = 'USD', onAddToPortfolio }) {
             const spark = sparklines[item.ticker]
             const change = p?.change ?? null
             return (
-              <div key={item.ticker} style={{
+              <div key={item.ticker} className="watchlist-table-row" style={{
                 display: 'grid', gridTemplateColumns: '1fr 120px 110px 100px 130px 80px',
                 alignItems: 'center', padding: '14px 20px',
                 borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none',
