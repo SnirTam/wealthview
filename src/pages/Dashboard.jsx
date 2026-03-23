@@ -26,31 +26,31 @@ export const CURRENCIES = {
   GBP:{symbol:'£',rate:0.79,label:'GBP'}, ILS:{symbol:'₪',rate:3.7,label:'ILS'},
 }
 export function formatAmount(usd, currency='USD') {
-  const c = CURRENCIES[currency]||CURRENCIES.USD
+  const c=CURRENCIES[currency]||CURRENCIES.USD
   return c.symbol+(usd*c.rate).toLocaleString(undefined,{maximumFractionDigits:0})
 }
 
 function getFirstName(user) {
-  const m = user?.user_metadata
-  if (m?.full_name) return m.full_name.split(' ')[0]
-  if (m?.name) return m.name.split(' ')[0]
-  if (user?.email) { const p=user.email.split('@')[0].split(/[._\-+]/)[0]; return p.charAt(0).toUpperCase()+p.slice(1) }
+  const m=user?.user_metadata
+  if(m?.full_name) return m.full_name.split(' ')[0]
+  if(m?.name) return m.name.split(' ')[0]
+  if(user?.email) { const p=user.email.split('@')[0].split(/[._\-+]/)[0]; return p.charAt(0).toUpperCase()+p.slice(1) }
   return ''
 }
 function getGreeting(name='') {
   const h=new Date().getHours()
-  const [base,emoji] = h>=5&&h<12?['Good morning','🌅']:h>=12&&h<18?['Good afternoon','☀️']:h>=18&&h<22?['Good evening','🌆']:['Good night','🌙']
+  const [base,emoji]=h>=5&&h<12?['Good morning','🌅']:h>=12&&h<18?['Good afternoon','☀️']:h>=18&&h<22?['Good evening','🌆']:['Good night','🌙']
   return name?`${base}, ${name} ${emoji}`:`${base} ${emoji}`
 }
 
 function buildChartData(history, total) {
-  if (!history.length) return null
+  if(!history.length) return null
   const byMonth={}
   history.forEach(({value,recorded_at})=>{ const m=recorded_at.slice(0,7); byMonth[m]=value })
   const months=Object.keys(byMonth).sort().slice(-5)
-  const points=months.map(m=>({ month:new Date(m+'-02').toLocaleDateString('en-US',{month:'short'}), value:byMonth[m] }))
+  const points=months.map(m=>({month:new Date(m+'-02').toLocaleDateString('en-US',{month:'short'}),value:byMonth[m]}))
   const thisMonth=new Date().toISOString().slice(0,7)
-  months[months.length-1]===thisMonth ? points[points.length-1]={month:'Now',value:total} : points.push({month:'Now',value:total})
+  months[months.length-1]===thisMonth?points[points.length-1]={month:'Now',value:total}:points.push({month:'Now',value:total})
   return points.length>=2?points:null
 }
 function generateDashboardSample(total) {
@@ -58,18 +58,10 @@ function generateDashboardSample(total) {
   return ['Aug','Sep','Oct','Nov','Dec','Now'].map((month,i)=>({month,value:Math.round(base*[0.71,0.78,0.84,0.88,0.95,1][i])}))
 }
 function calcMonthChange(history, total) {
-  if (!history.length) return null
+  if(!history.length) return null
   const cutoff=new Date(); cutoff.setDate(cutoff.getDate()-30)
   const older=history.filter(h=>new Date(h.recorded_at)<=cutoff)
   return older.length?total-older[older.length-1].value:null
-}
-function calcSixMonthChange(history, total) {
-  if (!history.length) return null
-  const cutoff=new Date(); cutoff.setMonth(cutoff.getMonth()-6)
-  const older=history.filter(h=>new Date(h.recorded_at)<=cutoff)
-  if (!older.length) return null
-  const prev=older[older.length-1].value
-  return prev?((total-prev)/prev)*100:null
 }
 
 function StatCard({label,value,sub,subColor,delay=0,accent,valueColor}) {
@@ -149,14 +141,14 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
           <p style={{fontWeight:600,fontSize:18,fontFamily:'var(--font-display)',letterSpacing:0.3}}>Add asset</p>
           <button onClick={onClose} style={{background:'rgba(255,255,255,0.06)',border:'1px solid var(--border2)',color:'var(--text)',fontSize:18,cursor:'pointer',width:32,height:32,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
         </div>
-        {atLimit ? (
+        {atLimit?(
           <div style={{textAlign:'center',padding:'20px 0'}}>
             <div style={{fontSize:32,marginBottom:12}}>✦</div>
             <p style={{fontSize:16,fontWeight:600,fontFamily:'var(--font-display)',marginBottom:8}}>Upgrade to Pro</p>
             <p style={{fontSize:13,color:'var(--muted2)',marginBottom:20,fontFamily:'var(--font-body)'}}>You've used all {freeLimit} free assets. Upgrade for unlimited.</p>
             <button onClick={()=>startCheckout(userEmail)} style={{background:'linear-gradient(135deg,var(--green),var(--teal))',color:'#0a0a0f',padding:'10px 24px',borderRadius:20,fontSize:14,fontWeight:700,border:'none',cursor:'pointer',fontFamily:'var(--font-display)'}}>Upgrade for $9.99/month →</button>
           </div>
-        ) : (
+        ):(
           <>
             <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:20}}>
               {CATEGORIES.map(cat=>(
@@ -229,12 +221,19 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
   const history=netWorthHistory||[]
   const chartData=buildChartData(history,total)
   const monthChange=calcMonthChange(history,total)
-  const sixMonthPct=calcSixMonthChange(history,total)
   const lastUpdated=stockLastUpdated||cryptoLastUpdated
+
+  // Chart Y domain — start near min so growth looks dramatic
+  const dashboardDisplayData=chartData||generateDashboardSample(total)
+  const chartMin=(() => {
+    const vals=dashboardDisplayData.map(d=>d.value)
+    const min=Math.min(...vals), max=Math.max(...vals)
+    return Math.max(0,Math.floor((min-(max-min)*0.15)/1000)*1000)
+  })()
 
   const pieData=[
     ...Object.keys(CATEGORY_COLORS).map(cat=>({
-      name:cat, color:CATEGORY_COLORS[cat],
+      name:cat,color:CATEGORY_COLORS[cat],
       value:assets.filter(a=>a.category===cat).reduce((s,a)=>s+(a.value||0),0),
     })).filter(d=>d.value>0),
     ...(totalLiabilities>0?[{name:'Liabilities',value:totalLiabilities,color:'#ff4d6d'}]:[]),
@@ -251,18 +250,10 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
 
   const cryptoChanges=assets.filter(a=>a.category==='Crypto'&&a.ticker&&cryptoPrices[a.ticker]).map(a=>cryptoPrices[a.ticker].usd_24h_change)
   const avgCryptoChange=cryptoChanges.length?cryptoChanges.reduce((s,c)=>s+c,0)/cryptoChanges.length:null
-
   const stockChanges=assets.filter(a=>a.category==='Stocks'&&a.ticker&&stockPrices[a.ticker]).map(a=>stockPrices[a.ticker].change)
   const avgStockChange=stockChanges.length?stockChanges.reduce((s,c)=>s+c,0)/stockChanges.length:null
-
-  // Calculate dollar change for stocks and crypto
-  const stockDollarChange = avgStockChange != null
-    ? assets.filter(a=>a.category==='Stocks'&&a.ticker&&stockPrices[a.ticker]).reduce((s,a)=>s+a.value*(stockPrices[a.ticker].change/100),0)
-    : null
-
-  const cryptoDollarChange = avgCryptoChange != null
-    ? assets.filter(a=>a.category==='Crypto'&&a.ticker&&cryptoPrices[a.ticker]).reduce((s,a)=>s+a.value*(cryptoPrices[a.ticker].usd_24h_change/100),0)
-    : null
+  const stockDollarChange=avgStockChange!=null?assets.filter(a=>a.category==='Stocks'&&a.ticker&&stockPrices[a.ticker]).reduce((s,a)=>s+a.value*(stockPrices[a.ticker].change/100),0):null
+  const cryptoDollarChange=avgCryptoChange!=null?assets.filter(a=>a.category==='Crypto'&&a.ticker&&cryptoPrices[a.ticker]).reduce((s,a)=>s+a.value*(cryptoPrices[a.ticker].usd_24h_change/100),0):null
 
   function getLiveChange(asset) {
     if(asset.category==='Crypto'&&asset.ticker&&cryptoPrices[asset.ticker]) return cryptoPrices[asset.ticker].usd_24h_change
@@ -353,11 +344,10 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
         </div>
       </div>
 
-      {/* Stat cards */}
+      {/* Stat cards — Net Worth card now has NO sub since chart handles the change */}
       <div className="stat-grid" style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:14,marginBottom:24}}>
         <StatCard label="Net worth" value={formatAmount(netWorth,currency)}
-          sub={monthChange!==null?(monthChange>=0?'↑':'↓')+' '+formatAmount(Math.abs(monthChange),currency)+' this month':'Assets minus liabilities'}
-          subColor={monthChange!==null?(monthChange>=0?'var(--green)':'var(--red)'):'var(--muted)'}
+          sub="Assets minus liabilities" subColor="var(--muted)"
           delay={0} accent={netWorth>=0?'var(--green)':'var(--red)'} valueColor={netWorth<0?'var(--red)':undefined}/>
         <StatCard label="Total assets" value={formatAmount(total,currency)}
           sub={`${assets.length} asset${assets.length!==1?'s':''}`} subColor="var(--muted)" delay={60} accent="var(--blue)"/>
@@ -367,16 +357,12 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
           delay={120} accent={totalLiabilities>0?'var(--red)':'var(--border2)'} valueColor={totalLiabilities>0?'var(--red)':undefined}/>
         <StatCard label="Stocks 24h"
           value={avgStockChange!=null?(avgStockChange>=0?'+':'')+avgStockChange.toFixed(2)+'%':'—'}
-          sub={avgStockChange!=null
-            ? (stockDollarChange>=0?'↑ +':'↓ ')+formatAmount(Math.abs(stockDollarChange),currency)+' today'
-            : 'Add stocks with tickers'}
+          sub={avgStockChange!=null?(stockDollarChange>=0?'↑ +':'↓ ')+formatAmount(Math.abs(stockDollarChange),currency)+' today':'Add stocks with tickers'}
           subColor={avgStockChange!=null?(avgStockChange>=0?'var(--green)':'var(--red)'):'var(--muted)'}
           delay={180} accent={avgStockChange!=null?(avgStockChange>=0?'var(--green)':'var(--red)'):'var(--blue)'}/>
         <StatCard label="Crypto 24h"
           value={avgCryptoChange!=null?(avgCryptoChange>=0?'+':'')+avgCryptoChange.toFixed(2)+'%':'—'}
-          sub={avgCryptoChange!=null
-            ? (cryptoDollarChange>=0?'↑ +':'↓ ')+formatAmount(Math.abs(cryptoDollarChange),currency)+' today'
-            : 'No crypto data yet'}
+          sub={avgCryptoChange!=null?(cryptoDollarChange>=0?'↑ +':'↓ ')+formatAmount(Math.abs(cryptoDollarChange),currency)+' today':'No crypto data yet'}
           subColor={avgCryptoChange!=null?(avgCryptoChange>=0?'var(--green)':'var(--red)'):'var(--muted)'}
           delay={240} accent={avgCryptoChange!=null?(avgCryptoChange>=0?'var(--green)':'var(--red)'):'var(--purple)'}/>
       </div>
@@ -384,40 +370,43 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
       {/* Chart + Allocation */}
       <div className="chart-grid" style={{display:'grid',gridTemplateColumns:'3fr 2fr',gap:16,marginBottom:24}}>
         <div className="fade-up" style={{background:'var(--bg2)',borderRadius:16,padding:'24px',border:'1px solid var(--border)',animationDelay:'200ms'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:24}}>
-            <div>
-              <p style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase',letterSpacing:1.5,fontWeight:500,marginBottom:6,fontFamily:'var(--font-body)'}}>Net worth</p>
-              <p style={{fontSize:24,fontWeight:600,fontFamily:'var(--font-display)',letterSpacing:0.5,color:netWorth<0?'var(--red)':'var(--text)'}}>{formatAmount(netWorth,currency)}</p>
+
+          {/* ── Unified chart header — value + dollar change + % badge, all in one line ── */}
+          <div style={{marginBottom:24}}>
+            <p style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase',letterSpacing:1.5,fontWeight:500,marginBottom:8,fontFamily:'var(--font-body)'}}>Net worth over time</p>
+            <div style={{display:'flex',alignItems:'baseline',gap:12,flexWrap:'wrap'}}>
+              <p style={{fontSize:26,fontWeight:600,fontFamily:'var(--font-display)',letterSpacing:0.3,color:netWorth<0?'var(--red)':'var(--text)',lineHeight:1}}>
+                {formatAmount(netWorth,currency)}
+              </p>
+              {monthChange!==null&&(
+                <>
+                  <span style={{fontSize:15,fontWeight:600,fontFamily:'var(--font-display)',color:monthChange>=0?'var(--green)':'var(--red)'}}>
+                    {monthChange>=0?'+':''}{formatAmount(monthChange,currency)}
+                  </span>
+                  <span style={{fontSize:11,padding:'2px 8px',borderRadius:12,fontFamily:'var(--font-body)',fontWeight:600,background:monthChange>=0?'rgba(0,217,139,0.12)':'rgba(255,77,109,0.12)',color:monthChange>=0?'var(--green)':'var(--red)',border:`1px solid ${monthChange>=0?'rgba(0,217,139,0.2)':'rgba(255,77,109,0.2)'}`}}>
+                    {monthChange>=0?'+':''}{total>0?((monthChange/total)*100).toFixed(1):0}%
+                  </span>
+                  <span style={{fontSize:11,color:'var(--muted)',fontFamily:'var(--font-body)'}}>this month</span>
+                </>
+              )}
             </div>
-            {sixMonthPct!==null&&(
-              <div style={{background:sixMonthPct>=0?'var(--green-dim)':'var(--red-dim)',color:sixMonthPct>=0?'var(--green)':'var(--red)',padding:'4px 12px',borderRadius:20,fontSize:12,fontWeight:500,border:`1px solid ${sixMonthPct>=0?'rgba(0,217,139,0.2)':'rgba(255,77,109,0.2)'}`,fontFamily:'var(--font-body)'}}>
-                {sixMonthPct>=0?'+':''}{sixMonthPct.toFixed(1)}% 6mo
-              </div>
-            )}
           </div>
-          {(()=>{
-            const displayData=chartData||generateDashboardSample(total)
-            const isSample=!chartData
-            return (
-              <>
-                <ResponsiveContainer width="100%" height={200}>
-                  <AreaChart data={displayData} margin={{top:5,right:0,bottom:0,left:0}}>
-                    <defs>
-                      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#00d98b" stopOpacity={0.25}/>
-                        <stop offset="100%" stopColor="#00d98b" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="month" tick={{fontSize:11,fill:'var(--muted)',fontFamily:'Geologica'}} axisLine={false} tickLine={false}/>
-                    <YAxis hide/>
-                    <Tooltip content={renderTooltip}/>
-                    <Area type="monotone" dataKey="value" stroke="var(--green)" strokeWidth={2.5} fill="url(#chartGrad)" dot={false}/>
-                  </AreaChart>
-                </ResponsiveContainer>
-                {isSample&&<p style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-body)',marginTop:8,opacity:0.6,letterSpacing:0.5}}>Sample preview · tracks automatically as you add assets</p>}
-              </>
-            )
-          })()}
+
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={dashboardDisplayData} margin={{top:5,right:0,bottom:0,left:0}}>
+              <defs>
+                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#00d98b" stopOpacity={0.25}/>
+                  <stop offset="100%" stopColor="#00d98b" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <XAxis dataKey="month" tick={{fontSize:11,fill:'var(--muted)',fontFamily:'Geologica'}} axisLine={false} tickLine={false}/>
+              <YAxis hide domain={[chartMin,'auto']}/>
+              <Tooltip content={renderTooltip}/>
+              <Area type="monotone" dataKey="value" stroke="var(--green)" strokeWidth={2.5} fill="url(#chartGrad)" dot={false} activeDot={{r:4,fill:'var(--green)',strokeWidth:0}}/>
+            </AreaChart>
+          </ResponsiveContainer>
+          {!chartData&&<p style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-body)',marginTop:8,opacity:0.6,letterSpacing:0.5}}>Sample preview · tracks automatically as you add assets</p>}
         </div>
 
         <div className="fade-up" style={{background:'var(--bg2)',borderRadius:16,padding:'24px',border:'1px solid var(--border)',animationDelay:'250ms'}}>
