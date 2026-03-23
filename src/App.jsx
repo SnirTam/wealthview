@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from './supabase'
 import { startCheckout } from './stripe'
+import {
+  isBiometricAvailable, getBiometricCredential,
+  registerBiometric, saveBiometricSession,
+} from './biometric'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
 import Assets from './pages/Assets'
@@ -97,6 +101,8 @@ export default function App() {
   const [milestone, setMilestone] = useState(null)
   const [toasts, setToasts] = useState([])
   const [showLogin, setShowLogin] = useState(false)
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false)
+  const [biometricEnrolling, setBiometricEnrolling] = useState(false)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -137,7 +143,7 @@ export default function App() {
       setAuthLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const u = session?.user ?? null
       setUser(u)
       if (u) {
@@ -146,6 +152,24 @@ export default function App() {
         setIsPro(proFromMeta || proFromStorage)
       } else {
         setIsPro(false)
+      }
+
+      // On fresh sign-in, save session for biometric and offer enrollment
+      if (event === 'SIGNED_IN' && session && u) {
+        saveBiometricSession(session.access_token, session.refresh_token)
+        const alreadyEnrolled = getBiometricCredential()?.userId === u.id
+        const promptedThisSession = sessionStorage.getItem('wv_bio_prompted')
+        if (!alreadyEnrolled && !promptedThisSession) {
+          const available = await isBiometricAvailable()
+          if (available) {
+            sessionStorage.setItem('wv_bio_prompted', '1')
+            setShowBiometricPrompt(true)
+          }
+        }
+      }
+      // Keep stored session fresh on token refresh
+      if (event === 'TOKEN_REFRESHED' && session && getBiometricCredential()) {
+        saveBiometricSession(session.access_token, session.refresh_token)
       }
     })
     return () => subscription.unsubscribe()
@@ -519,6 +543,80 @@ export default function App() {
             milestone={milestone}
             onClose={() => setMilestone(null)}
           />
+        )}
+
+        {/* Biometric enrollment prompt */}
+        {showBiometricPrompt && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 300,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            padding: '0 0 24px',
+          }} onClick={() => setShowBiometricPrompt(false)}>
+            <div onClick={e => e.stopPropagation()} style={{
+              background: 'var(--bg2)', borderRadius: 24, padding: '32px 28px',
+              width: '100%', maxWidth: 420, border: '1px solid var(--border2)',
+              animation: 'fadeUp 0.3s ease both',
+              margin: '0 16px',
+            }}>
+              <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 16 }}>
+                {/* Face ID icon */}
+                <svg width="52" height="52" viewBox="0 0 52 52" fill="none" style={{ display: 'block', margin: '0 auto' }}>
+                  <rect x="1" y="1" width="50" height="50" rx="13" stroke="var(--green)" strokeWidth="2"/>
+                  <circle cx="18" cy="22" r="2.5" fill="var(--green)"/>
+                  <circle cx="34" cy="22" r="2.5" fill="var(--green)"/>
+                  <path d="M26 22v5" stroke="var(--green)" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M18 33c2 3 14 3 16 0" stroke="var(--green)" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M8 16V10a2 2 0 0 1 2-2h6M44 16V10a2 2 0 0 0-2-2h-6M8 36v6a2 2 0 0 0 2 2h6M44 36v6a2 2 0 0 1-2 2h-6" stroke="var(--green)" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <p style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-display)', textAlign: 'center', marginBottom: 8 }}>
+                Enable Face ID
+              </p>
+              <p style={{ fontSize: 14, color: 'var(--muted2)', textAlign: 'center', fontFamily: 'var(--font-body)', lineHeight: 1.6, marginBottom: 28 }}>
+                Sign in instantly with Face ID next time — no password needed.
+              </p>
+              {biometricEnrolling ? (
+                <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--muted)', fontSize: 14, fontFamily: 'var(--font-body)' }}>
+                  Follow the prompt on your device…
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <button
+                    onClick={async () => {
+                      setBiometricEnrolling(true)
+                      try {
+                        await registerBiometric(user.id, user.email)
+                        setShowBiometricPrompt(false)
+                        addToast('Face ID enabled', 'Sign in instantly next time — no password needed.', 'success')
+                      } catch {
+                        setBiometricEnrolling(false)
+                        addToast('Could not enable Face ID', 'Please try again.', 'error')
+                      }
+                    }}
+                    style={{
+                      width: '100%', padding: '14px', borderRadius: 12,
+                      background: 'linear-gradient(135deg, var(--green), var(--teal))',
+                      color: '#0a0a0f', fontSize: 15, fontWeight: 700,
+                      border: 'none', cursor: 'pointer', fontFamily: 'var(--font-display)',
+                    }}
+                  >
+                    Enable Face ID
+                  </button>
+                  <button
+                    onClick={() => { setShowBiometricPrompt(false); setBiometricEnrolling(false) }}
+                    style={{
+                      width: '100%', padding: '12px', borderRadius: 12,
+                      background: 'transparent', color: 'var(--muted)', fontSize: 14,
+                      border: '1px solid var(--border2)', cursor: 'pointer', fontFamily: 'var(--font-body)',
+                    }}
+                  >
+                    Not now
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Toast notifications */}

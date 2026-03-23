@@ -1,5 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from '../supabase'
+import {
+  isBiometricAvailable, getBiometricCredential,
+  authenticateWithBiometric, getBiometricSession,
+} from '../biometric'
 
 /* 6-box OTP input */
 function OtpInput({ value, onChange }) {
@@ -85,6 +89,15 @@ export default function Login() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [resendCooldown, setResendCooldown] = useState(0)
+  const [biometricReady, setBiometricReady] = useState(false)
+  const [biometricLoading, setBiometricLoading] = useState(false)
+
+  // Check if Face ID is available + enrolled on this device
+  useEffect(() => {
+    const cred = getBiometricCredential()
+    if (!cred) return
+    isBiometricAvailable().then(ok => setBiometricReady(ok))
+  }, [])
 
   // Countdown timer for resend
   useEffect(() => {
@@ -158,6 +171,32 @@ export default function Login() {
       setOtp('')
     }
     setLoading(false)
+  }
+
+  async function handleBiometricLogin() {
+    setBiometricLoading(true)
+    setError('')
+    try {
+      await authenticateWithBiometric()
+      const session = getBiometricSession()
+      if (!session) throw new Error('No session stored')
+      // Try to restore session; fall back to refresh if access token expired
+      let result = await supabase.auth.setSession({
+        access_token: session.accessToken,
+        refresh_token: session.refreshToken,
+      })
+      if (result.error) {
+        result = await supabase.auth.refreshSession({ refresh_token: session.refreshToken })
+      }
+      if (result.error) {
+        setError('Session expired. Please sign in with your password to re-enable Face ID.')
+      }
+    } catch (err) {
+      if (err?.name !== 'NotAllowedError') {
+        setError('Face ID failed. Please sign in with your password.')
+      }
+    }
+    setBiometricLoading(false)
   }
 
   function switchMode(m) {
@@ -415,6 +454,42 @@ export default function Login() {
               borderRadius: 8, padding: '10px 14px', marginBottom: 16,
               fontSize: 13, color: 'var(--green)', fontFamily: 'var(--font-body)',
             }}>{message}</div>
+          )}
+
+          {/* Face ID button — only shown on login screen when enrolled */}
+          {mode === 'login' && biometricReady && (
+            <>
+              <button
+                onClick={handleBiometricLogin}
+                disabled={biometricLoading}
+                style={{
+                  width: '100%', padding: '12px',
+                  background: 'var(--bg3)',
+                  color: 'var(--text)', fontWeight: 600, fontSize: 14,
+                  border: '1px solid var(--border2)', borderRadius: 10,
+                  cursor: biometricLoading ? 'not-allowed' : 'pointer',
+                  fontFamily: 'var(--font-body)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  opacity: biometricLoading ? 0.7 : 1, transition: 'opacity 0.15s',
+                  marginBottom: 10,
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 52 52" fill="none">
+                  <rect x="1" y="1" width="50" height="50" rx="13" stroke="currentColor" strokeWidth="2.5"/>
+                  <circle cx="18" cy="22" r="2.5" fill="currentColor"/>
+                  <circle cx="34" cy="22" r="2.5" fill="currentColor"/>
+                  <path d="M26 22v5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M18 33c2 3 14 3 16 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M8 16V10a2 2 0 0 1 2-2h6M44 16V10a2 2 0 0 0-2-2h-6M8 36v6a2 2 0 0 0 2 2h6M44 36v6a2 2 0 0 1-2 2h-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                {biometricLoading ? 'Verifying…' : 'Sign in with Face ID'}
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                <span style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>or</span>
+                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              </div>
+            </>
           )}
 
           <button
