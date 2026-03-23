@@ -191,7 +191,16 @@ export default function App() {
     if (netWorth <= 0) return
 
     const celebratedKey = `wv_milestones_${user.id}`
-    const celebrated = JSON.parse(localStorage.getItem(celebratedKey) || '[]')
+    const raw = localStorage.getItem(celebratedKey)
+    const celebrated = JSON.parse(raw || '[]')
+
+    // First time seeing this user — silently mark all already-passed milestones
+    // so we only congratulate on future crossings
+    if (!raw) {
+      const alreadyPassed = MILESTONES.filter(m => netWorth >= m)
+      localStorage.setItem(celebratedKey, JSON.stringify(alreadyPassed))
+      return
+    }
 
     for (const m of MILESTONES) {
       if (netWorth >= m && !celebrated.includes(m)) {
