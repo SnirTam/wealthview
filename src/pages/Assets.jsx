@@ -6,11 +6,11 @@ import AssetLogo from '../components/AssetLogo'
 
 const CATEGORY_COLORS = {
   Stocks: '#4d9fff', Crypto: '#ffb340', 'Real Estate': '#00d98b',
-  Retirement: '#a78bfa', Cash: '#6b6b80',
+  Retirement: '#a78bfa', Cash: '#6b6b80', Others: '#9b8ea8',
 }
 const CATEGORIES = Object.keys(CATEGORY_COLORS)
 const CATEGORY_ICONS = {
-  Stocks: '📈', Crypto: '₿', 'Real Estate': '🏠', Retirement: '🏦', Cash: '💵',
+  Stocks: '📈', Crypto: '₿', 'Real Estate': '🏠', Retirement: '🏦', Cash: '💵', Others: '📦',
 }
 const CHAIN_COLORS = { ethereum: '#627EEA', bitcoin: '#F7931A', solana: '#9945FF' }
 const CHAIN_LABELS = { ethereum: 'Ethereum', bitcoin: 'Bitcoin', solana: 'Solana' }
@@ -250,7 +250,7 @@ export default function Assets({ assets, setAssets, isPro, currency = 'USD', use
       </div>
 
       {/* Category cards */}
-      <div className="summary-grid fade-up" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 24, animationDelay: '80ms' }}>
+      <div className="summary-grid fade-up" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 24, animationDelay: '80ms' }}>
         {CATEGORIES.map(cat => {
           const catTotal = assets.filter(a => a.category === cat).reduce((s, a) => s + (a.value || 0), 0)
           const pct = total > 0 ? (catTotal / total * 100).toFixed(0) : 0

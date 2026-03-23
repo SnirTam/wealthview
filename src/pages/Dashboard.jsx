@@ -6,8 +6,8 @@ import { supabase } from '../supabase'
 import AssetLogo from '../components/AssetLogo'
 import ShareCard from '../components/ShareCard'
 
-const CATEGORY_COLORS = { Stocks:'#4d9fff', Crypto:'#ffb340', 'Real Estate':'#00d98b', Retirement:'#a78bfa', Cash:'#6b6b80' }
-const CATEGORY_ICONS  = { Stocks:'📈', Crypto:'₿', 'Real Estate':'🏠', Retirement:'🏦', Cash:'💵' }
+const CATEGORY_COLORS = { Stocks:'#4d9fff', Crypto:'#ffb340', 'Real Estate':'#00d98b', Retirement:'#a78bfa', Cash:'#6b6b80', Others:'#9b8ea8' }
+const CATEGORY_ICONS  = { Stocks:'📈', Crypto:'₿', 'Real Estate':'🏠', Retirement:'🏦', Cash:'💵', Others:'📦' }
 const POPULAR_STOCKS  = [
   {ticker:'AAPL',name:'Apple'},{ticker:'NVDA',name:'NVIDIA'},{ticker:'MSFT',name:'Microsoft'},
   {ticker:'GOOGL',name:'Google'},{ticker:'AMZN',name:'Amazon'},{ticker:'TSLA',name:'Tesla'},
@@ -128,7 +128,7 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
     if(!value) return
     if(category==='Stocks'&&!ticker) return
     if(category==='Crypto'&&!ticker) return
-    if(['Real Estate','Retirement','Cash'].includes(category)&&!name) return
+    if(['Real Estate','Retirement','Cash','Others'].includes(category)&&!name) return
     const finalName=category==='Stocks'?(POPULAR_STOCKS.find(s=>s.ticker===ticker)?.name||ticker)+' ('+ticker+')':category==='Crypto'?(POPULAR_CRYPTO.find(s=>s.ticker===ticker)?.name||ticker):name
     onAdd({id:Date.now(),name:finalName,category,value:parseFloat(value),ticker:['Stocks','Crypto'].includes(category)?ticker:null})
     onClose()
@@ -150,7 +150,7 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
           </div>
         ):(
           <>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:20}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:20}}>
               {CATEGORIES.map(cat=>(
                 <button key={cat} onClick={()=>{setCategory(cat);setTicker('');setName('');setSuggestions([])}} style={{padding:'10px 4px',borderRadius:10,fontSize:11,fontWeight:category===cat?600:400,background:category===cat?CATEGORY_COLORS[cat]+'20':'var(--bg3)',color:category===cat?CATEGORY_COLORS[cat]:'var(--muted)',border:category===cat?'1px solid '+CATEGORY_COLORS[cat]+'50':'1px solid var(--border)',cursor:'pointer',transition:'all 0.15s',fontFamily:'var(--font-body)',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
                   <span style={{fontSize:18}}>{CATEGORY_ICONS[cat]}</span>{cat}
@@ -192,8 +192,8 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
                   )}
                 </div>
               )}
-              {['Real Estate','Retirement','Cash'].includes(category)&&(
-                <input placeholder={category==='Real Estate'?'Property description':category==='Retirement'?'Account name (e.g. Fidelity 401k)':'Account name (e.g. Chase Checking)'} value={name} onChange={e=>setName(e.target.value)} style={inputStyle}/>
+              {['Real Estate','Retirement','Cash','Others'].includes(category)&&(
+                <input placeholder={category==='Real Estate'?'Property description':category==='Retirement'?'Account name (e.g. Fidelity 401k)':category==='Others'?'What is it? (e.g. Jewelry, Car, Business...)':'Account name (e.g. Chase Checking)'} value={name} onChange={e=>setName(e.target.value)} style={inputStyle}/>
               )}
               <input placeholder="Value (USD)" type="number" value={value} onChange={e=>setValue(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleAdd()} style={inputStyle}/>
               <button onClick={handleAdd} style={{background:'linear-gradient(135deg,var(--green),var(--teal))',color:'#0a0a0f',padding:'12px',borderRadius:10,fontSize:14,fontWeight:700,border:'none',cursor:'pointer',fontFamily:'var(--font-display)',letterSpacing:0.5}}>Add asset</button>
