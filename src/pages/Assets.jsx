@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { formatAmount } from './Dashboard'
@@ -20,6 +20,143 @@ const CATEGORY_ICONS = {
   'Real Estate': '🏠',
   'Retirement':  '🏦',
   'Cash':        '💵',
+}
+
+const CHAIN_COLORS = {
+  ethereum: '#627EEA',
+  bitcoin:  '#F7931A',
+  solana:   '#9945FF',
+}
+
+const CHAIN_LABELS = {
+  ethereum: 'Ethereum',
+  bitcoin:  'Bitcoin',
+  solana:   'Solana',
+}
+
+function validateAddress(chain, address) {
+  if (chain === 'ethereum') return /^0x[a-fA-F0-9]{40}$/.test(address)
+  if (chain === 'bitcoin')  return /^(1|3|bc1)[a-zA-Z0-9]{25,61}$/.test(address)
+  if (chain === 'solana')   return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)
+  return false
+}
+
+function shortenAddress(addr) {
+  return addr.slice(0, 6) + '...' + addr.slice(-4)
+}
+
+async function fetchCryptoPrices() {
+  const cached = localStorage.getItem('crypto_prices_cache')
+  if (cached) {
+    const { data, ts } = JSON.parse(cached)
+    if (Date.now() - ts < 5 * 60 * 1000) return data
+  }
+  const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,solana&vs_currencies=usd')
+  const data = await res.json()
+  localStorage.setItem('crypto_prices_cache', JSON.stringify({ data, ts: Date.now() }))
+  return data
+}
+
+async function fetchWalletBalance(chain, address) {
+  const prices = await fetchCryptoPrices()
+  if (chain === 'ethereum') {
+    const res = await fetch(`https://api.etherscan.io/api?module=account&action=balance&address=${address}&tag=latest&apikey=YourApiKeyToken`)
+    const data = await res.json()
+    const eth = parseInt(data.result) / 1e18
+    return { balance: eth, symbol: 'ETH', usd: eth * (prices.ethereum?.usd || 0) }
+  }
+  if (chain === 'bitcoin') {
+    const res = await fetch(`https://blockchain.info/rawaddr/${address}?cors=true`)
+    const data = await res.json()
+    const btc = data.final_balance / 1e8
+    return { balance: btc, symbol: 'BTC', usd: btc * (prices.bitcoin?.usd || 0) }
+  }
+  if (chain === 'solana') {
+    const res = await fetch('https://api.mainnet-beta.solana.com', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getBalance', params: [address] })
+    })
+    const data = await res.json()
+    const sol = (data.result?.value || 0) / 1e9
+    return { balance: sol, symbol: 'SOL', usd: sol * (prices.solana?.usd || 0) }
+  }
+}
+
+function WalletRow({ wallet, onRemove, onRefresh }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', padding: '14px 24px',
+      borderBottom: '1px solid var(--border)', transition: 'background 0.15s',
+    }}
+      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+    >
+      <div style={{
+        width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+        background: CHAIN_COLORS[wallet.chain] + '22',
+        border: '1px solid ' + CHAIN_COLORS[wallet.chain] + '55',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 16, marginRight: 14,
+      }}>
+        {wallet.chain === 'ethereum' ? '⟠' : wallet.chain === 'bitcoin' ? '₿' : '◎'}
+      </div>
+
+      <div style={{ flex: 1 }}>
+        <p style={{ fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)' }}>
+          {shortenAddress(wallet.address)}
+        </p>
+        <span style={{
+          fontSize: 10, padding: '2px 8px', borderRadius: 10,
+          background: CHAIN_COLORS[wallet.chain] + '22',
+          color: CHAIN_COLORS[wallet.chain],
+          border: '1px solid ' + CHAIN_COLORS[wallet.chain] + '44',
+          fontFamily: 'var(--font-body)', fontWeight: 600,
+        }}>
+          {CHAIN_LABELS[wallet.chain]}
+        </span>
+      </div>
+
+      <div style={{ textAlign: 'right', marginRight: 16 }}>
+        {wallet.loading ? (
+          <p style={{ fontSize: 13, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Loading...</p>
+        ) : wallet.error ? (
+          <p style={{ fontSize: 12, color: 'var(--red)', fontFamily: 'var(--font-body)' }}>Failed to fetch</p>
+        ) : (
+          <>
+            <p style={{ fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-display)' }}>
+              ${(wallet.usd || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </p>
+            <p style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+              {(wallet.balance || 0).toFixed(4)} {wallet.symbol}
+            </p>
+          </>
+        )}
+      </div>
+
+      <button onClick={() => onRefresh(wallet.address)} title="Refresh" style={{
+        width: 28, height: 28, borderRadius: 8, marginRight: 6,
+        background: 'transparent', border: '1px solid var(--border)',
+        color: 'var(--muted)', fontSize: 13, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.15s',
+      }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--blue)'; e.currentTarget.style.color = 'var(--blue)' }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)' }}
+      >↻</button>
+
+      <button onClick={() => onRemove(wallet.address)} title="Remove" style={{
+        width: 28, height: 28, borderRadius: 8,
+        background: 'transparent', border: '1px solid var(--border)',
+        color: 'var(--muted)', fontSize: 16, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.15s',
+      }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-dim)'; e.currentTarget.style.borderColor = 'var(--red)'; e.currentTarget.style.color = 'var(--red)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)' }}
+      >×</button>
+    </div>
+  )
 }
 
 function EditValueModal({ asset, onSave, onClose }) {
@@ -55,12 +192,12 @@ function EditValueModal({ asset, onSave, onClose }) {
           <button onClick={onClose} style={{
             background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border2)',
             color: 'var(--text)', fontSize: 18, cursor: 'pointer',
-            width: 32, height: 32, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 32, height: 32, borderRadius: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>×</button>
         </div>
         <input
-          type="number"
-          value={value}
+          type="number" value={value}
           onChange={e => setValue(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSave()}
           autoFocus
@@ -78,17 +215,13 @@ function EditValueModal({ asset, onSave, onClose }) {
             background: 'rgba(255,255,255,0.06)', color: 'var(--text)',
             border: '1px solid var(--border2)', cursor: 'pointer',
             fontFamily: 'var(--font-body)', fontSize: 14,
-          }}>
-            Cancel
-          </button>
+          }}>Cancel</button>
           <button onClick={handleSave} style={{
             flex: 2, padding: '10px', borderRadius: 10,
             background: 'linear-gradient(135deg, var(--green), var(--teal))',
             color: '#0a0a0f', border: 'none', cursor: 'pointer',
             fontFamily: 'var(--font-display)', fontSize: 14, fontWeight: 700,
-          }}>
-            Save
-          </button>
+          }}>Save</button>
         </div>
       </div>
     </div>
@@ -101,8 +234,62 @@ export default function Assets({ assets, setAssets, isPro, currency = 'USD', use
   const [exportOpen, setExportOpen] = useState(false)
   const exportRef = useRef(null)
 
+  // Wallet state
+  const [wallets, setWallets] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wealthview_wallets') || '[]') } catch { return [] }
+  })
+  const [showAddWallet, setShowAddWallet] = useState(false)
+  const [walletChain, setWalletChain] = useState('ethereum')
+  const [walletAddress, setWalletAddress] = useState('')
+  const [walletError, setWalletError] = useState('')
+  const [walletLoading, setWalletLoading] = useState(false)
+
   const total = assets.reduce((s, a) => s + (a.value || 0), 0)
+  const walletTotal = wallets.reduce((s, w) => s + (w.usd || 0), 0)
   const filtered = filter === 'All' ? assets : assets.filter(a => a.category === filter)
+
+  useEffect(() => {
+    localStorage.setItem('wealthview_wallets', JSON.stringify(wallets))
+  }, [wallets])
+
+  async function loadBalance(chain, address) {
+    setWallets(prev => prev.map(w =>
+      w.address === address ? { ...w, loading: true, error: false } : w
+    ))
+    try {
+      const result = await fetchWalletBalance(chain, address)
+      setWallets(prev => prev.map(w =>
+        w.address === address ? { ...w, ...result, loading: false, updatedAt: Date.now() } : w
+      ))
+    } catch {
+      setWallets(prev => prev.map(w =>
+        w.address === address ? { ...w, loading: false, error: true } : w
+      ))
+    }
+  }
+
+  async function handleAddWallet() {
+    setWalletError('')
+    if (!validateAddress(walletChain, walletAddress)) {
+      setWalletError('Invalid address format for ' + CHAIN_LABELS[walletChain])
+      return
+    }
+    if (wallets.find(w => w.address === walletAddress)) {
+      setWalletError('Wallet already linked')
+      return
+    }
+    setWalletLoading(true)
+    const newWallet = { chain: walletChain, address: walletAddress, loading: true, usd: 0 }
+    setWallets(prev => [...prev, newWallet])
+    setShowAddWallet(false)
+    setWalletAddress('')
+    setWalletLoading(false)
+    loadBalance(walletChain, walletAddress)
+  }
+
+  function removeWallet(address) {
+    setWallets(prev => prev.filter(w => w.address !== address))
+  }
 
   function removeAsset(id) {
     setAssets(assets.filter(a => a.id !== id))
@@ -348,60 +535,31 @@ export default function Assets({ assets, setAssets, isPro, currency = 'USD', use
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                {/* Edit button */}
-                <button
-                  onClick={() => setEditingAsset(asset)}
-                  title="Edit value"
-                  style={{
-                    width: 30, height: 30, borderRadius: 8,
-                    background: 'transparent', border: '1px solid var(--border)',
-                    color: 'var(--muted)', fontSize: 13, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = 'rgba(77,159,255,0.1)'
-                    e.currentTarget.style.borderColor = 'var(--blue)'
-                    e.currentTarget.style.color = 'var(--blue)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.borderColor = 'var(--border)'
-                    e.currentTarget.style.color = 'var(--muted)'
-                  }}
-                >
-                  ✎
-                </button>
-                {/* Delete button */}
-                <button
-                  onClick={() => removeAsset(asset.id)}
-                  title="Delete"
-                  style={{
-                    width: 30, height: 30, borderRadius: 8,
-                    background: 'transparent', border: '1px solid var(--border)',
-                    color: 'var(--muted)', fontSize: 16, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = 'var(--red-dim)'
-                    e.currentTarget.style.borderColor = 'var(--red)'
-                    e.currentTarget.style.color = 'var(--red)'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'transparent'
-                    e.currentTarget.style.borderColor = 'var(--border)'
-                    e.currentTarget.style.color = 'var(--muted)'
-                  }}
-                >
-                  ×
-                </button>
+                <button onClick={() => setEditingAsset(asset)} title="Edit value" style={{
+                  width: 30, height: 30, borderRadius: 8,
+                  background: 'transparent', border: '1px solid var(--border)',
+                  color: 'var(--muted)', fontSize: 13, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(77,159,255,0.1)'; e.currentTarget.style.borderColor = 'var(--blue)'; e.currentTarget.style.color = 'var(--blue)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)' }}
+                >✎</button>
+                <button onClick={() => removeAsset(asset.id)} title="Delete" style={{
+                  width: 30, height: 30, borderRadius: 8,
+                  background: 'transparent', border: '1px solid var(--border)',
+                  color: 'var(--muted)', fontSize: 16, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-dim)'; e.currentTarget.style.borderColor = 'var(--red)'; e.currentTarget.style.color = 'var(--red)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)' }}
+                >×</button>
               </div>
             </div>
           )
         })}
 
-        {/* Total row */}
         {filtered.length > 0 && (
           <div style={{
             display: 'grid', gridTemplateColumns: '1fr 130px 150px 100px 90px',
@@ -416,6 +574,127 @@ export default function Assets({ assets, setAssets, isPro, currency = 'USD', use
               {formatAmount(filtered.reduce((s, a) => s + (a.value || 0), 0), currency)}
             </p>
             <span /><span />
+          </div>
+        )}
+      </div>
+
+      {/* ── Linked Wallets ── */}
+      <div className="fade-up" style={{ marginTop: 32 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
+              Linked wallets
+            </h2>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, fontFamily: 'var(--font-body)' }}>
+              Paste your public wallet address — balances update automatically
+            </p>
+          </div>
+          <button
+            onClick={() => setShowAddWallet(o => !o)}
+            style={{
+              background: 'linear-gradient(135deg, var(--green), var(--teal))',
+              color: '#0a0a0f', padding: '8px 16px', borderRadius: 8,
+              fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer',
+              fontFamily: 'var(--font-display)', letterSpacing: 0.3,
+            }}
+          >
+            {showAddWallet ? '✕ Cancel' : '+ Link wallet'}
+          </button>
+        </div>
+
+        {/* Add wallet form */}
+        {showAddWallet && (
+          <div style={{
+            background: 'var(--bg2)', borderRadius: 14, padding: '20px',
+            border: '1px solid var(--border2)', marginBottom: 16,
+          }}>
+            {/* Chain selector */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+              {Object.entries(CHAIN_LABELS).map(([key, label]) => (
+                <button key={key} onClick={() => setWalletChain(key)} style={{
+                  padding: '7px 16px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                  background: walletChain === key ? CHAIN_COLORS[key] + '22' : 'var(--bg3)',
+                  color: walletChain === key ? CHAIN_COLORS[key] : 'var(--muted)',
+                  border: walletChain === key ? '1px solid ' + CHAIN_COLORS[key] + '55' : '1px solid var(--border)',
+                  cursor: 'pointer', transition: 'all 0.15s', fontFamily: 'var(--font-body)',
+                }}>
+                  {key === 'ethereum' ? '⟠' : key === 'bitcoin' ? '₿' : '◎'} {label}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input
+                placeholder={
+                  walletChain === 'ethereum' ? '0x1234...abcd (42 characters)' :
+                  walletChain === 'bitcoin'  ? 'bc1q... or 1A1z...' :
+                  '7xKXt... (Solana address)'
+                }
+                value={walletAddress}
+                onChange={e => { setWalletAddress(e.target.value); setWalletError('') }}
+                onKeyDown={e => e.key === 'Enter' && handleAddWallet()}
+                style={{
+                  flex: 1, padding: '10px 14px', borderRadius: 10,
+                  border: walletError ? '1px solid var(--red)' : '1px solid var(--border2)',
+                  background: 'var(--bg3)', color: 'var(--text)',
+                  fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)',
+                }}
+              />
+              <button onClick={handleAddWallet} disabled={walletLoading} style={{
+                background: 'linear-gradient(135deg, var(--green), var(--teal))',
+                color: '#0a0a0f', padding: '10px 20px', borderRadius: 10,
+                fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+                fontFamily: 'var(--font-display)', opacity: walletLoading ? 0.7 : 1,
+              }}>
+                {walletLoading ? 'Linking...' : 'Link'}
+              </button>
+            </div>
+            {walletError && (
+              <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 8, fontFamily: 'var(--font-body)' }}>
+                {walletError}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Wallet list */}
+        {wallets.length === 0 ? (
+          <div style={{
+            background: 'var(--bg2)', borderRadius: 14, padding: '40px',
+            border: '1px solid var(--border)', textAlign: 'center',
+          }}>
+            <p style={{ fontSize: 24, marginBottom: 10 }}>🔗</p>
+            <p style={{ fontSize: 14, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+              No wallets linked yet — paste any public wallet address above
+            </p>
+          </div>
+        ) : (
+          <div style={{
+            background: 'var(--bg2)', borderRadius: 14,
+            border: '1px solid var(--border)', overflow: 'hidden',
+          }}>
+            {wallets.map(wallet => (
+              <WalletRow
+                key={wallet.address}
+                wallet={wallet}
+                onRemove={removeWallet}
+                onRefresh={addr => {
+                  const w = wallets.find(x => x.address === addr)
+                  if (w) loadBalance(w.chain, addr)
+                }}
+              />
+            ))}
+            <div style={{
+              padding: '14px 24px', borderTop: '1px solid var(--border2)',
+              background: 'var(--bg3)', display: 'flex', justifyContent: 'space-between',
+            }}>
+              <p style={{ fontSize: 13, color: 'var(--muted2)', fontFamily: 'var(--font-body)' }}>
+                Wallet total
+              </p>
+              <p style={{ fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-display)', color: 'var(--green)' }}>
+                ${walletTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </p>
+            </div>
           </div>
         )}
       </div>
