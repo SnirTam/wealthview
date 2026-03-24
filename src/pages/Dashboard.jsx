@@ -408,6 +408,31 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
           delay={240} accent={avgCryptoChange!=null?(avgCryptoChange>=0?'var(--green)':'var(--red)'):'var(--purple)'}/>
       </div>
 
+      {/* Net Worth Breakdown — Assets − Liabilities = Net Worth */}
+      <div className="fade-up" style={{background:'var(--bg2)',borderRadius:14,border:'1px solid var(--border)',padding:'14px 20px',marginBottom:16,display:'flex',alignItems:'center',flexWrap:'wrap',gap:6,animationDelay:'180ms'}}>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          <span style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:1,fontFamily:'var(--font-body)',fontWeight:500}}>Total assets</span>
+          <span style={{fontSize:15,fontWeight:700,fontFamily:'var(--font-display)',color:'var(--green)'}}>{formatAmount(total,currency)}</span>
+        </div>
+        <span style={{fontSize:16,color:'var(--muted)',fontWeight:300,padding:'0 4px'}}>−</span>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          <span style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:1,fontFamily:'var(--font-body)',fontWeight:500}}>Liabilities</span>
+          <span style={{fontSize:15,fontWeight:700,fontFamily:'var(--font-display)',color:totalLiabilities>0?'var(--red)':'var(--muted)'}}>{totalLiabilities>0?formatAmount(totalLiabilities,currency):'$0'}</span>
+        </div>
+        <span style={{fontSize:16,color:'var(--muted)',fontWeight:300,padding:'0 4px'}}>=</span>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          <span style={{fontSize:11,color:'var(--muted)',textTransform:'uppercase',letterSpacing:1,fontFamily:'var(--font-body)',fontWeight:500}}>Net worth</span>
+          <span style={{fontSize:15,fontWeight:700,fontFamily:'var(--font-display)',color:netWorth>=0?'var(--text)':'var(--red)'}}>{formatAmount(netWorth,currency)}</span>
+        </div>
+        <div style={{marginLeft:'auto'}}>
+          <button onClick={()=>setPage('liabilities')} style={{fontSize:11,color:'var(--muted)',background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:8,padding:'5px 12px',cursor:'pointer',fontFamily:'var(--font-body)',transition:'all 0.15s'}}
+            onMouseEnter={e=>{e.currentTarget.style.color='var(--red)';e.currentTarget.style.borderColor='rgba(255,77,109,0.4)'}}
+            onMouseLeave={e=>{e.currentTarget.style.color='var(--muted)';e.currentTarget.style.borderColor='var(--border)'}}>
+            {totalLiabilities>0?'Manage liabilities →':'+ Add liability'}
+          </button>
+        </div>
+      </div>
+
       {/* Chart + Allocation */}
       <div className="chart-grid" style={{display:'grid',gridTemplateColumns:'3fr 2fr',gap:16,marginBottom:24}}>
         <div className="fade-up" style={{background:'var(--bg2)',borderRadius:16,padding:'24px',border:'1px solid var(--border)',animationDelay:'200ms'}}>
