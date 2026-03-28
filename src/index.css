@@ -288,3 +288,7 @@ a { text-decoration: none; color: inherit; }
     grid-template-columns: repeat(2, 1fr) !important;
   }
 }
+
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
