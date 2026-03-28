@@ -403,7 +403,7 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
 
   const currencySelector=(
     <div style={{position:'relative',display:'inline-flex',alignItems:'center'}}>
-      <select value={currency} onChange={e=>setCurrency(e.target.value)} style={{background:'var(--bg2)',color:'rgba(255,255,255,0.88)',border:'1px solid var(--border2)',borderRadius:8,padding:'7px 28px 7px 12px',fontSize:12,cursor:'pointer',fontFamily:'var(--font-body)',outline:'none',appearance:'none',WebkitAppearance:'none',fontWeight:500}}>
+      <select value={currency} onChange={e=>setCurrency(e.target.value)} style={{background:'var(--bg2)',color:'var(--btn-text)',border:'1px solid var(--border2)',borderRadius:8,padding:'7px 28px 7px 12px',fontSize:12,cursor:'pointer',fontFamily:'var(--font-body)',outline:'none',appearance:'none',WebkitAppearance:'none',fontWeight:500}}>
         {Object.entries(CURRENCY_META).map(([k,v])=><option key={k} value={k}>{v.symbol} {k} — {v.name}</option>)}
       </select>
       <svg style={{position:'absolute',right:8,pointerEvents:'none',color:'var(--muted)'}} width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -419,13 +419,13 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
   const headerButtons=(
     <div className="header-buttons" style={{display:'flex',alignItems:'center',gap:10,paddingTop:4}}>
       {currencySelector}
-      <button onClick={()=>setShowShareCard(true)} style={{display:'flex',alignItems:'center',gap:5,background:'var(--bg2)',color:'rgba(255,255,255,0.88)',padding:'7px 14px',borderRadius:8,fontSize:12,fontWeight:500,border:'1px solid var(--border2)',cursor:'pointer',fontFamily:'var(--font-body)',transition:'all 0.15s'}}
+      <button onClick={()=>setShowShareCard(true)} style={{display:'flex',alignItems:'center',gap:5,background:'var(--bg2)',color:'var(--btn-text)',padding:'7px 14px',borderRadius:8,fontSize:12,fontWeight:500,border:'1px solid var(--border2)',cursor:'pointer',fontFamily:'var(--font-body)',transition:'all 0.15s'}}
         onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.25)';e.currentTarget.style.background='var(--bg3)'}}
         onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border2)';e.currentTarget.style.background='var(--bg2)'}}>
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M12 10.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm0 0L6 7.5m6-6.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm0 0L6 7.5m-6 1a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
         Share
       </button>
-      <button onClick={()=>setShowAddAsset(true)} style={{display:'flex',alignItems:'center',gap:6,background:'var(--bg2)',color:'rgba(255,255,255,0.88)',padding:'7px 16px',borderRadius:8,fontSize:12,fontWeight:500,border:'1px solid var(--border2)',cursor:'pointer',fontFamily:'var(--font-body)',transition:'all 0.15s'}}
+      <button onClick={()=>setShowAddAsset(true)} style={{display:'flex',alignItems:'center',gap:6,background:'var(--bg2)',color:'var(--btn-text)',padding:'7px 16px',borderRadius:8,fontSize:12,fontWeight:500,border:'1px solid var(--border2)',cursor:'pointer',fontFamily:'var(--font-body)',transition:'all 0.15s'}}
         onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.25)';e.currentTarget.style.background='var(--bg3)'}}
         onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border2)';e.currentTarget.style.background='var(--bg2)'}}>+ Add asset</button>
     </div>

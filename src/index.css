@@ -22,6 +22,7 @@
   --accent:    #00d98b;
   --font-display: 'Geologica', sans-serif;
   --font-body:    'Geologica', sans-serif;
+  --btn-text:     rgba(255,255,255,0.88);
 }
 
 [data-theme="light"] {
@@ -42,6 +43,7 @@
   --purple:    #7c5ce0;
   --teal:      #14b8a6;
   --accent:    #00b876;
+  --btn-text:  var(--text);
 }
 
 html { font-size: 16px; }
