@@ -74,7 +74,12 @@ export default function Analytics({assets,netWorthHistory,currency='USD'}) {
     })
   },[filtered,period,assets])
 
-  const allTimeHigh=useMemo(()=>Math.max(total,...rawHistory.map(h=>h.value)),[rawHistory,total])
+  const allTimeHigh=useMemo(()=>{
+    if(assets.length===0||total<=0) return null
+    const realHistory=netWorthHistory||[]
+    if(!realHistory.length) return total
+    return Math.max(total,...realHistory.map(h=>h.value))
+  },[assets,total,netWorthHistory])
   const bestCat=barData.length?barData.reduce((best,d)=>d.value>best.value?d:best,barData[0]):null
 
   const renderTooltip=useCallback(props=><ChartTooltip {...props} currency={currency}/>,[currency])
@@ -109,8 +114,8 @@ export default function Analytics({assets,netWorthHistory,currency='USD'}) {
         {[
           {
             label:'All-time high', accent:'var(--green)',
-            value:formatAmount(allTimeHigh,currency),
-            sub:allTimeHigh===total?'← current value':formatAmount(total,currency)+' currently',
+            value:allTimeHigh!=null?formatAmount(allTimeHigh,currency):'—',
+            sub:allTimeHigh!=null?(allTimeHigh===total?'← current value':formatAmount(total,currency)+' currently'):'Add assets to track',
             subColor:'var(--muted)',
           },
           {
