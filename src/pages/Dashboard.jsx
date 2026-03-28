@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useFxRates, CURRENCY_META, liveRates } from '../useFxRates'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { useStockPrices } from '../useStockPrices'
@@ -18,10 +18,30 @@ const POPULAR_STOCKS  = [
   {ticker:'SPY',name:'S&P 500 ETF'},{ticker:'QQQ',name:'Nasdaq ETF'},
 ]
 const POPULAR_CRYPTO = [
-  {ticker:'bitcoin',name:'Bitcoin (BTC)'},{ticker:'ethereum',name:'Ethereum (ETH)'},
-  {ticker:'solana',name:'Solana (SOL)'},{ticker:'ripple',name:'XRP'},
-  {ticker:'dogecoin',name:'Dogecoin (DOGE)'},{ticker:'cardano',name:'Cardano (ADA)'},
+  {ticker:'bitcoin',name:'Bitcoin'},{ticker:'ethereum',name:'Ethereum'},
+  {ticker:'solana',name:'Solana'},{ticker:'ripple',name:'XRP'},
+  {ticker:'dogecoin',name:'Dogecoin'},{ticker:'cardano',name:'Cardano'},
 ]
+const CORS = 'https://corsproxy.io/?'
+
+async function searchStocks(query) {
+  const url = `${CORS}https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=7&newsCount=0&enableFuzzyQuery=false&lang=en-US`
+  const res = await fetch(url)
+  const data = await res.json()
+  return (data?.quotes || [])
+    .filter(q => q.symbol && q.longname || q.shortname)
+    .slice(0, 6)
+    .map(q => ({ ticker: q.symbol, name: q.longname || q.shortname, type: q.typeDisp || '' }))
+}
+
+async function searchCrypto(query) {
+  const url = `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(query)}`
+  const res = await fetch(url)
+  const data = await res.json()
+  return (data?.coins || [])
+    .slice(0, 6)
+    .map(c => ({ ticker: c.id, name: c.name, symbol: c.symbol?.toUpperCase(), thumb: c.thumb }))
+}
 const CATEGORIES = Object.keys(CATEGORY_COLORS)
 
 // Keep CURRENCIES as compat export — now backed by live rates via liveRates module variable
@@ -158,25 +178,47 @@ function EmptyState({onAdd}) {
 function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,prefill,currency='USD'}) {
   const [category,setCategory]=useState(prefill?.category||'Stocks')
   const [ticker,setTicker]=useState(prefill?.ticker||'')
+  const [selectedName,setSelectedName]=useState(prefill?.name||'')
   const [name,setName]=useState(prefill?.name||'')
   const [value,setValue]=useState('')
   const [suggestions,setSuggestions]=useState([])
+  const [searching,setSearching]=useState(false)
   const [inputCurrency,setInputCurrency]=useState(currency)
+  const debounceRef=useRef(null)
   const atLimit=!isPro&&assetsCount>=freeLimit
   const inputStyle={padding:'10px 14px',borderRadius:10,border:'1px solid var(--border2)',background:'var(--bg3)',color:'var(--text)',fontSize:14,outline:'none',fontFamily:'var(--font-body)',width:'100%'}
   const currSymbol=CURRENCY_META[inputCurrency]?.symbol||'$'
   const currRate=liveRates[inputCurrency]||1
 
-  function handleTickerInput(val) { setTicker(val.toUpperCase()); setSuggestions(POPULAR_STOCKS.filter(s=>s.ticker.startsWith(val.toUpperCase())||s.name.toLowerCase().startsWith(val.toLowerCase())).slice(0,4)) }
-  function handleCryptoInput(val) { setTicker(val); setSuggestions(POPULAR_CRYPTO.filter(s=>s.name.toLowerCase().includes(val.toLowerCase())||s.ticker.toLowerCase().startsWith(val.toLowerCase())).slice(0,4)) }
-  function selectSuggestion(s) { setTicker(s.ticker); setName(s.name); setSuggestions([]) }
+  function handleTickerInput(val) {
+    setTicker(val)
+    setSelectedName('')
+    clearTimeout(debounceRef.current)
+    if(!val.trim()) { setSuggestions(POPULAR_STOCKS); return }
+    setSearching(true)
+    debounceRef.current=setTimeout(async()=>{
+      try { setSuggestions(await searchStocks(val)) } catch { setSuggestions([]) }
+      setSearching(false)
+    },350)
+  }
+  function handleCryptoInput(val) {
+    setTicker(val)
+    setSelectedName('')
+    clearTimeout(debounceRef.current)
+    if(!val.trim()) { setSuggestions(POPULAR_CRYPTO); return }
+    setSearching(true)
+    debounceRef.current=setTimeout(async()=>{
+      try { setSuggestions(await searchCrypto(val)) } catch { setSuggestions([]) }
+      setSearching(false)
+    },350)
+  }
+  function selectSuggestion(s) { setTicker(s.ticker); setSelectedName(s.name); setSuggestions([]) }
   function handleAdd() {
     if(!value) return
     if(category==='Stocks'&&!ticker) return
     if(category==='Crypto'&&!ticker) return
     if(['Real Estate','Retirement','Cash','Others'].includes(category)&&!name) return
-    const finalName=category==='Stocks'?(POPULAR_STOCKS.find(s=>s.ticker===ticker)?.name||ticker)+' ('+ticker+')':category==='Crypto'?(POPULAR_CRYPTO.find(s=>s.ticker===ticker)?.name||ticker):name
-    // Convert entered value back to USD for storage
+    const finalName=category==='Stocks'?(selectedName||ticker)+' ('+ticker+')':category==='Crypto'?(selectedName||ticker):name
     const usdValue=parseFloat(value)/(liveRates[inputCurrency]||1)
     onAdd({id:Date.now(),name:finalName,category,value:usdValue,ticker:['Stocks','Crypto'].includes(category)?ticker:null})
     onClose()
@@ -200,7 +242,7 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
           <>
             <div className="modal-category-grid" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:20}}>
               {CATEGORIES.map(cat=>(
-                <button key={cat} onClick={()=>{setCategory(cat);setTicker('');setName('');setSuggestions([])}} style={{padding:'10px 4px',borderRadius:10,fontSize:11,fontWeight:category===cat?600:400,background:category===cat?CATEGORY_COLORS[cat]+'20':'var(--bg3)',color:category===cat?CATEGORY_COLORS[cat]:'var(--muted)',border:category===cat?'1px solid '+CATEGORY_COLORS[cat]+'50':'1px solid var(--border)',cursor:'pointer',transition:'all 0.15s',fontFamily:'var(--font-body)',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                <button key={cat} onClick={()=>{setCategory(cat);setTicker('');setName('');setSelectedName('');setSuggestions([])}} style={{padding:'10px 4px',borderRadius:10,fontSize:11,fontWeight:category===cat?600:400,background:category===cat?CATEGORY_COLORS[cat]+'20':'var(--bg3)',color:category===cat?CATEGORY_COLORS[cat]:'var(--muted)',border:category===cat?'1px solid '+CATEGORY_COLORS[cat]+'50':'1px solid var(--border)',cursor:'pointer',transition:'all 0.15s',fontFamily:'var(--font-body)',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
                   <span style={{fontSize:18}}>{CATEGORY_ICONS[cat]}</span>{cat}
                 </button>
               ))}
@@ -208,15 +250,19 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
             <div style={{display:'flex',flexDirection:'column',gap:12}}>
               {category==='Stocks'&&(
                 <div style={{position:'relative'}}>
-                  <input placeholder="Ticker (e.g. AAPL)" value={ticker} onChange={e=>handleTickerInput(e.target.value)} style={inputStyle}/>
-                  {suggestions.length>0&&(
-                    <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:10,background:'var(--bg3)',border:'1px solid var(--border2)',borderRadius:10,marginTop:4,overflow:'hidden'}}>
+                  <input placeholder="Search ticker or name (e.g. AAPL, Vanguard…)" value={ticker} onChange={e=>handleTickerInput(e.target.value)} onFocus={()=>!ticker&&setSuggestions(POPULAR_STOCKS)} style={inputStyle}/>
+                  {searching&&<span style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',fontSize:11,color:'var(--muted)'}}>searching…</span>}
+                  {!searching&&suggestions.length>0&&(
+                    <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:10,background:'var(--bg2)',border:'1px solid var(--border2)',borderRadius:10,marginTop:4,overflow:'hidden',boxShadow:'0 8px 32px rgba(0,0,0,0.4)'}}>
                       {suggestions.map(s=>(
-                        <div key={s.ticker} onClick={()=>selectSuggestion(s)} style={{padding:'10px 14px',cursor:'pointer',fontSize:13,display:'flex',justifyContent:'space-between',fontFamily:'var(--font-body)'}}
+                        <div key={s.ticker} onClick={()=>selectSuggestion(s)} style={{padding:'9px 14px',cursor:'pointer',fontSize:13,display:'flex',justifyContent:'space-between',alignItems:'center',fontFamily:'var(--font-body)'}}
                           onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.05)'}
                           onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                          <span style={{fontWeight:600,color:'var(--blue)'}}>{s.ticker}</span>
-                          <span style={{color:'var(--muted)'}}>{s.name}</span>
+                          <div style={{display:'flex',alignItems:'center',gap:8}}>
+                            <span style={{fontWeight:700,color:'var(--blue)',minWidth:60}}>{s.ticker}</span>
+                            <span style={{color:'var(--text)',fontSize:12}}>{s.name}</span>
+                          </div>
+                          {s.type&&<span style={{fontSize:10,color:'var(--muted)',background:'rgba(255,255,255,0.06)',padding:'2px 7px',borderRadius:6}}>{s.type}</span>}
                         </div>
                       ))}
                     </div>
@@ -225,15 +271,19 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
               )}
               {category==='Crypto'&&(
                 <div style={{position:'relative'}}>
-                  <input placeholder="Search crypto (e.g. Bitcoin)" value={ticker} onChange={e=>handleCryptoInput(e.target.value)} style={inputStyle}/>
-                  {suggestions.length>0&&(
-                    <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:10,background:'var(--bg3)',border:'1px solid var(--border2)',borderRadius:10,marginTop:4,overflow:'hidden'}}>
+                  <input placeholder="Search coin name or symbol (e.g. Bitcoin, SOL…)" value={ticker} onChange={e=>handleCryptoInput(e.target.value)} onFocus={()=>!ticker&&setSuggestions(POPULAR_CRYPTO)} style={inputStyle}/>
+                  {searching&&<span style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',fontSize:11,color:'var(--muted)'}}>searching…</span>}
+                  {!searching&&suggestions.length>0&&(
+                    <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:10,background:'var(--bg2)',border:'1px solid var(--border2)',borderRadius:10,marginTop:4,overflow:'hidden',boxShadow:'0 8px 32px rgba(0,0,0,0.4)'}}>
                       {suggestions.map(s=>(
-                        <div key={s.ticker} onClick={()=>selectSuggestion(s)} style={{padding:'10px 14px',cursor:'pointer',fontSize:13,display:'flex',justifyContent:'space-between',fontFamily:'var(--font-body)'}}
+                        <div key={s.ticker} onClick={()=>selectSuggestion(s)} style={{padding:'9px 14px',cursor:'pointer',fontSize:13,display:'flex',justifyContent:'space-between',alignItems:'center',fontFamily:'var(--font-body)'}}
                           onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.05)'}
                           onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                          <span style={{fontWeight:600,color:'var(--amber)'}}>{s.name}</span>
-                          <span style={{color:'var(--muted)'}}>{s.ticker}</span>
+                          <div style={{display:'flex',alignItems:'center',gap:8}}>
+                            {s.thumb&&<img src={s.thumb} alt="" style={{width:18,height:18,borderRadius:'50%'}}/>}
+                            <span style={{color:'var(--text)',fontSize:12}}>{s.name}</span>
+                          </div>
+                          {s.symbol&&<span style={{fontSize:11,color:'var(--amber)',fontWeight:600}}>{s.symbol}</span>}
                         </div>
                       ))}
                     </div>
