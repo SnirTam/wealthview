@@ -155,7 +155,7 @@ function EmptyState({onAdd}) {
   )
 }
 
-function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,prefill}) {
+function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,prefill,currency='USD'}) {
   const [category,setCategory]=useState(prefill?.category||'Stocks')
   const [ticker,setTicker]=useState(prefill?.ticker||'')
   const [name,setName]=useState(prefill?.name||'')
@@ -163,6 +163,8 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
   const [suggestions,setSuggestions]=useState([])
   const atLimit=!isPro&&assetsCount>=freeLimit
   const inputStyle={padding:'10px 14px',borderRadius:10,border:'1px solid var(--border2)',background:'var(--bg3)',color:'var(--text)',fontSize:14,outline:'none',fontFamily:'var(--font-body)',width:'100%'}
+  const currSymbol=CURRENCY_META[currency]?.symbol||'$'
+  const currRate=liveRates[currency]||1
 
   function handleTickerInput(val) { setTicker(val.toUpperCase()); setSuggestions(POPULAR_STOCKS.filter(s=>s.ticker.startsWith(val.toUpperCase())||s.name.toLowerCase().startsWith(val.toLowerCase())).slice(0,4)) }
   function handleCryptoInput(val) { setTicker(val); setSuggestions(POPULAR_CRYPTO.filter(s=>s.name.toLowerCase().includes(val.toLowerCase())||s.ticker.toLowerCase().startsWith(val.toLowerCase())).slice(0,4)) }
@@ -173,7 +175,9 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
     if(category==='Crypto'&&!ticker) return
     if(['Real Estate','Retirement','Cash','Others'].includes(category)&&!name) return
     const finalName=category==='Stocks'?(POPULAR_STOCKS.find(s=>s.ticker===ticker)?.name||ticker)+' ('+ticker+')':category==='Crypto'?(POPULAR_CRYPTO.find(s=>s.ticker===ticker)?.name||ticker):name
-    onAdd({id:Date.now(),name:finalName,category,value:parseFloat(value),ticker:['Stocks','Crypto'].includes(category)?ticker:null})
+    // Convert entered value back to USD for storage
+    const usdValue=parseFloat(value)/currRate
+    onAdd({id:Date.now(),name:finalName,category,value:usdValue,ticker:['Stocks','Crypto'].includes(category)?ticker:null})
     onClose()
   }
 
@@ -238,7 +242,23 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
               {['Real Estate','Retirement','Cash','Others'].includes(category)&&(
                 <input placeholder={category==='Real Estate'?'Property description':category==='Retirement'?'Account name (e.g. Fidelity 401k)':category==='Others'?'What is it? (e.g. Jewelry, Car, Business...)':'Account name (e.g. Chase Checking)'} value={name} onChange={e=>setName(e.target.value)} style={inputStyle}/>
               )}
-              <input placeholder="Value (USD)" type="number" value={value} onChange={e=>setValue(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleAdd()} style={inputStyle}/>
+              <div style={{position:'relative'}}>
+                <span style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',fontSize:14,color:'var(--muted2)',fontFamily:'var(--font-display)',pointerEvents:'none',fontWeight:600}}>
+                  {currSymbol}
+                </span>
+                <input
+                  placeholder={'Value in '+currency}
+                  type="number" value={value}
+                  onChange={e=>setValue(e.target.value)}
+                  onKeyDown={e=>e.key==='Enter'&&handleAdd()}
+                  style={{...inputStyle,paddingLeft:currSymbol.length>1?currSymbol.length*10+14+'px':'28px'}}
+                />
+                {value&&currency!=='USD'&&(
+                  <span style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',fontSize:11,color:'var(--muted)',fontFamily:'var(--font-body)',pointerEvents:'none'}}>
+                    ≈ ${(parseFloat(value)/currRate||0).toLocaleString(undefined,{maximumFractionDigits:0})} USD
+                  </span>
+                )}
+              </div>
               <button onClick={handleAdd} style={{background:'linear-gradient(135deg,var(--green),var(--teal))',color:'#0a0a0f',padding:'12px',borderRadius:10,fontSize:14,fontWeight:700,border:'none',cursor:'pointer',fontFamily:'var(--font-display)',letterSpacing:0.5}}>Add asset</button>
             </div>
           </>
@@ -348,7 +368,7 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
 
   if(assets.length===0) return (
     <div style={{maxWidth:1600}}>
-      {showAddAsset&&<AddAssetModal onAdd={handleAddAsset} onClose={handleCloseModal} isPro={isPro} assetsCount={0} freeLimit={freeLimit} userEmail={user?.email} prefill={prefillAsset} key={prefillAsset?.ticker||'modal'}/>}
+      {showAddAsset&&<AddAssetModal onAdd={handleAddAsset} onClose={handleCloseModal} isPro={isPro} assetsCount={0} freeLimit={freeLimit} userEmail={user?.email} prefill={prefillAsset} currency={currency} key={prefillAsset?.ticker||'modal'}/>}
       <div className="fade-up dashboard-header" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:36}}>
         <div>
           <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:4}}>
