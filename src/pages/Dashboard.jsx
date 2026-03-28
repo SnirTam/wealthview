@@ -108,14 +108,8 @@ function buildChartData(history, total, period='1M') {
   lastBucket===nowKey?points[points.length-1]={month:'Now',value:total}:points.push({month:'Now',value:total})
   return points.length>=2?points:null
 }
-function generateDashboardSample(total, period='1M') {
-  const base=total>0?total:88000
-  if(period==='1W') return ['Mon','Tue','Wed','Thu','Fri','Now'].map((m,i)=>({month:m,value:Math.round(base*[0.97,0.975,0.98,0.985,0.992,1][i])}))
-  if(period==='3M') return ['Jan','Feb','Mar','Now'].map((m,i)=>({month:m,value:Math.round(base*[0.88,0.92,0.96,1][i])}))
-  if(period==='6M') return ['Sep','Oct','Nov','Dec','Jan','Now'].map((m,i)=>({month:m,value:Math.round(base*[0.82,0.87,0.91,0.94,0.97,1][i])}))
-  if(period==='1Y') return ['Mar','May','Jul','Sep','Nov','Now'].map((m,i)=>({month:m,value:Math.round(base*[0.71,0.78,0.84,0.90,0.96,1][i])}))
-  if(period==='All') return ['2022','2023','2024','Now'].map((m,i)=>({month:m,value:Math.round(base*[0.45,0.62,0.82,1][i])}))
-  return ['Aug','Sep','Oct','Nov','Dec','Now'].map((month,i)=>({month,value:Math.round(base*[0.71,0.78,0.84,0.88,0.95,1][i])}))
+function todayOnlyChart(total) {
+  return [{month:'Today',value:total},{month:'Now',value:total}]
 }
 function calcPeriodChange(history, total, period) {
   if(!history.length) return null
@@ -358,14 +352,15 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
   // lastUpdated comes from useStockPrices directly
 
   // Chart Y domain — start near min so growth looks dramatic
-  const dashboardDisplayData=chartData||generateDashboardSample(total,chartPeriod)
+  const dashboardDisplayData=chartData||(total>0?todayOnlyChart(total):null)
   const chartMin=(() => {
+    if(!dashboardDisplayData) return 0
     const vals=dashboardDisplayData.map(d=>d.value)
     const min=Math.min(...vals), max=Math.max(...vals)
     return Math.max(0,Math.floor((min-(max-min)*0.15)/1000)*1000)
   })()
-  const chartFirst=dashboardDisplayData[0]?.value||0
-  const chartLast=dashboardDisplayData[dashboardDisplayData.length-1]?.value||0
+  const chartFirst=dashboardDisplayData?.[0]?.value||0
+  const chartLast=dashboardDisplayData?.[dashboardDisplayData.length-1]?.value||0
   const chartChg=chartLast-chartFirst
   const chartChgPct=chartFirst>0?(chartChg/chartFirst)*100:0
   const chartChgPos=chartChg>=0
@@ -408,7 +403,7 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
 
   const currencySelector=(
     <div style={{position:'relative',display:'inline-flex',alignItems:'center'}}>
-      <select value={currency} onChange={e=>setCurrency(e.target.value)} style={{background:'var(--bg2)',color:'var(--muted2)',border:'1px solid var(--border2)',borderRadius:8,padding:'7px 28px 7px 12px',fontSize:12,cursor:'pointer',fontFamily:'var(--font-body)',outline:'none',appearance:'none',WebkitAppearance:'none',fontWeight:500}}>
+      <select value={currency} onChange={e=>setCurrency(e.target.value)} style={{background:'var(--bg2)',color:'rgba(255,255,255,0.88)',border:'1px solid var(--border2)',borderRadius:8,padding:'7px 28px 7px 12px',fontSize:12,cursor:'pointer',fontFamily:'var(--font-body)',outline:'none',appearance:'none',WebkitAppearance:'none',fontWeight:500}}>
         {Object.entries(CURRENCY_META).map(([k,v])=><option key={k} value={k}>{v.symbol} {k} — {v.name}</option>)}
       </select>
       <svg style={{position:'absolute',right:8,pointerEvents:'none',color:'var(--muted)'}} width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -424,13 +419,13 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
   const headerButtons=(
     <div className="header-buttons" style={{display:'flex',alignItems:'center',gap:10,paddingTop:4}}>
       {currencySelector}
-      <button onClick={()=>setShowShareCard(true)} style={{display:'flex',alignItems:'center',gap:5,background:'var(--bg2)',color:'var(--muted2)',padding:'7px 14px',borderRadius:8,fontSize:12,fontWeight:500,border:'1px solid var(--border2)',cursor:'pointer',fontFamily:'var(--font-body)',transition:'all 0.15s'}}
+      <button onClick={()=>setShowShareCard(true)} style={{display:'flex',alignItems:'center',gap:5,background:'var(--bg2)',color:'rgba(255,255,255,0.88)',padding:'7px 14px',borderRadius:8,fontSize:12,fontWeight:500,border:'1px solid var(--border2)',cursor:'pointer',fontFamily:'var(--font-body)',transition:'all 0.15s'}}
         onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.25)';e.currentTarget.style.background='var(--bg3)'}}
         onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border2)';e.currentTarget.style.background='var(--bg2)'}}>
         <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M12 10.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm0 0L6 7.5m6-6.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm0 0L6 7.5m-6 1a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0z" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/></svg>
         Share
       </button>
-      <button onClick={()=>setShowAddAsset(true)} style={{display:'flex',alignItems:'center',gap:6,background:'var(--bg2)',color:'var(--text)',padding:'7px 16px',borderRadius:8,fontSize:12,fontWeight:500,border:'1px solid var(--border2)',cursor:'pointer',fontFamily:'var(--font-body)',transition:'all 0.15s'}}
+      <button onClick={()=>setShowAddAsset(true)} style={{display:'flex',alignItems:'center',gap:6,background:'var(--bg2)',color:'rgba(255,255,255,0.88)',padding:'7px 16px',borderRadius:8,fontSize:12,fontWeight:500,border:'1px solid var(--border2)',cursor:'pointer',fontFamily:'var(--font-body)',transition:'all 0.15s'}}
         onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.25)';e.currentTarget.style.background='var(--bg3)'}}
         onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border2)';e.currentTarget.style.background='var(--bg2)'}}>+ Add asset</button>
     </div>
@@ -559,21 +554,27 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
             </div>
           </div>
 
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={dashboardDisplayData} margin={{top:5,right:0,bottom:0,left:0}}>
-              <defs>
-                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#00d98b" stopOpacity={0.25}/>
-                  <stop offset="100%" stopColor="#00d98b" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="month" tick={{fontSize:11,fill:'var(--muted)',fontFamily:'Geologica'}} axisLine={false} tickLine={false}/>
-              <YAxis hide domain={[chartMin,'auto']}/>
-              <Tooltip content={renderTooltip}/>
-              <Area type="monotone" dataKey="value" stroke="var(--green)" strokeWidth={2.5} fill="url(#chartGrad)" dot={false} activeDot={{r:4,fill:'var(--green)',strokeWidth:0}}/>
-            </AreaChart>
-          </ResponsiveContainer>
-          {!chartData&&<p style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-body)',marginTop:8,opacity:0.6,letterSpacing:0.5}}>Sample preview · tracks automatically as you add assets</p>}
+          {dashboardDisplayData?(
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={dashboardDisplayData} margin={{top:5,right:0,bottom:0,left:0}}>
+                <defs>
+                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#00d98b" stopOpacity={0.25}/>
+                    <stop offset="100%" stopColor="#00d98b" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="month" tick={{fontSize:11,fill:'var(--muted)',fontFamily:'Geologica'}} axisLine={false} tickLine={false}/>
+                <YAxis hide domain={[chartMin,'auto']}/>
+                <Tooltip content={renderTooltip}/>
+                <Area type="monotone" dataKey="value" stroke="var(--green)" strokeWidth={2.5} fill="url(#chartGrad)" dot={false} activeDot={{r:4,fill:'var(--green)',strokeWidth:0}}/>
+              </AreaChart>
+            </ResponsiveContainer>
+          ):(
+            <div style={{height:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <p style={{fontSize:12,color:'var(--muted)',fontFamily:'var(--font-body)',opacity:0.6,letterSpacing:0.3,textAlign:'center'}}>Add assets to start tracking your net worth over time</p>
+            </div>
+          )}
+          {dashboardDisplayData&&!chartData&&<p style={{fontSize:10,color:'var(--muted)',fontFamily:'var(--font-body)',marginTop:8,opacity:0.6,letterSpacing:0.5}}>Tracking started today · history builds automatically</p>}
         </div>
 
         <div className="fade-up" style={{background:'var(--bg2)',borderRadius:16,padding:'24px',border:'1px solid var(--border)',animationDelay:'250ms'}}>

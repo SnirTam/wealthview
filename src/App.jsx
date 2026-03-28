@@ -89,7 +89,9 @@ function TopBar({ page, isPro, userEmail }) {
 
 export default function App() {
   const [page, setPage] = useState('dashboard')
-  const [assets, setAssets] = useState([])
+  const [assets, setAssets] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('wv_assets_backup') || '[]') } catch { return [] }
+  })
   const [liabilities, setLiabilitiesState] = useState([])
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -198,7 +200,15 @@ export default function App() {
       supabase.from('liabilities').select('*').eq('user_id', user.id),
     ]).then(([assetsRes, historyRes, liabRes]) => {
       const loadedAssets = assetsRes.error ? [] : (assetsRes.data || [])
-      if (!assetsRes.error) setAssets(loadedAssets)
+      if (!assetsRes.error) {
+        setAssets(loadedAssets)
+        try { localStorage.setItem('wv_assets_backup', JSON.stringify(loadedAssets)) } catch {}
+      } else {
+        try {
+          const backup = JSON.parse(localStorage.getItem('wv_assets_backup') || '[]')
+          if (backup.length > 0) setAssets(backup)
+        } catch {}
+      }
       if (!historyRes.error) setNetWorthHistory(historyRes.data || [])
       if (!liabRes.error) setLiabilitiesState(liabRes.data || [])
 
@@ -244,6 +254,7 @@ export default function App() {
   // ── Save assets ───────────────────────────────────────────────────────────
   async function saveAssets(newAssets) {
     setAssets(newAssets)
+    try { localStorage.setItem('wv_assets_backup', JSON.stringify(newAssets)) } catch {}
     if (!user) return
     try {
       await supabase.from('assets').delete().eq('user_id', user.id)
