@@ -25,11 +25,11 @@ const POPULAR_CRYPTO = [
 const CORS = 'https://corsproxy.io/?'
 
 async function searchStocks(query) {
-  const url = `${CORS}https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=7&newsCount=0&enableFuzzyQuery=false&lang=en-US`
+  const url = `${CORS}https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=8&newsCount=0&enableFuzzyQuery=true&lang=en-US`
   const res = await fetch(url)
   const data = await res.json()
   return (data?.quotes || [])
-    .filter(q => q.symbol && q.longname || q.shortname)
+    .filter(q => q.symbol && (q.longname || q.shortname))
     .slice(0, 6)
     .map(q => ({ ticker: q.symbol, name: q.longname || q.shortname, type: q.typeDisp || '' }))
 }
@@ -197,7 +197,14 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
     if(!val.trim()) { setSuggestions(POPULAR_STOCKS); return }
     setSearching(true)
     debounceRef.current=setTimeout(async()=>{
-      try { setSuggestions(await searchStocks(val)) } catch { setSuggestions([]) }
+      try {
+        const results=await searchStocks(val)
+        // always append a "use directly" fallback row so any valid ticker works
+        const upper=val.trim().toUpperCase()
+        const alreadyIn=results.some(r=>r.ticker===upper)
+        if(!alreadyIn) results.push({ticker:upper,name:'Use "'+upper+'" directly',type:'manual'})
+        setSuggestions(results)
+      } catch { setSuggestions([{ticker:val.trim().toUpperCase(),name:'Use "'+val.trim().toUpperCase()+'" directly',type:'manual'}]) }
       setSearching(false)
     },350)
   }
@@ -262,7 +269,8 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
                             <span style={{fontWeight:700,color:'var(--blue)',minWidth:60}}>{s.ticker}</span>
                             <span style={{color:'var(--text)',fontSize:12}}>{s.name}</span>
                           </div>
-                          {s.type&&<span style={{fontSize:10,color:'var(--muted)',background:'rgba(255,255,255,0.06)',padding:'2px 7px',borderRadius:6}}>{s.type}</span>}
+                          {s.type&&s.type!=='manual'&&<span style={{fontSize:10,color:'var(--muted)',background:'rgba(255,255,255,0.06)',padding:'2px 7px',borderRadius:6}}>{s.type}</span>}
+                          {s.type==='manual'&&<span style={{fontSize:10,color:'var(--blue)',opacity:0.7,padding:'2px 7px'}}>↵ enter</span>}
                         </div>
                       ))}
                     </div>
