@@ -1,20 +1,23 @@
 import { useState, useEffect, useRef } from 'react'
 
-const CACHE_TTL = 15 * 60 * 1000 // 15 minutes
-const LS_KEY = 'stock_prices_cache'
+const STOCK_CACHE_TTL = 5 * 60 * 1000   // 5-min data freshness
+const CRYPTO_CACHE_TTL = 60 * 1000       // 1-min data freshness
+const POLL_INTERVAL = 60 * 1000          // refresh every 60s
+const LS_STOCK = 'stock_prices_cache'
+const LS_CRYPTO = 'crypto_prices_cache'
 const CORS = 'https://corsproxy.io/?'
 
-function loadCache() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}') } catch { return {} }
+function loadCache(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '{}') } catch { return {} }
 }
-function saveCache(c) {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(c)) } catch {}
+function saveCache(key, data) {
+  try { localStorage.setItem(key, JSON.stringify(data)) } catch {}
 }
 
-// Initialise from localStorage so prices survive a page reload
-let priceCache = loadCache()
+let stockCache = loadCache(LS_STOCK)
+let cryptoCache = loadCache(LS_CRYPTO)
 
-async function fetchTicker(ticker) {
+async function fetchStockTicker(ticker) {
   const url = `${CORS}https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`
   const res = await fetch(url)
   const data = await res.json()
@@ -27,38 +30,60 @@ async function fetchTicker(ticker) {
   return { price, previousClose, change }
 }
 
+async function fetchCryptoIds(ids) {
+  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`
+  const data = await fetch(url).then(r => r.json())
+  const result = {}
+  for (const [id, v] of Object.entries(data)) {
+    result[id] = { price: v.usd, change: v.usd_24h_change ?? 0 }
+  }
+  return result
+}
+
 export function useStockPrices(assets) {
   const [prices, setPrices] = useState(() => {
     const now = Date.now()
     const valid = {}
-    Object.entries(priceCache).forEach(([ticker, e]) => {
-      if (e.ts && now - e.ts < CACHE_TTL) valid[ticker] = { price: e.price, change: e.change, previousClose: e.previousClose }
-    })
+    for (const [ticker, e] of Object.entries(stockCache)) {
+      if (e.ts && now - e.ts < STOCK_CACHE_TTL) valid[ticker] = { price: e.price, change: e.change, previousClose: e.previousClose }
+    }
+    for (const [id, e] of Object.entries(cryptoCache)) {
+      if (e.ts && now - e.ts < CRYPTO_CACHE_TTL) valid[id] = { price: e.price, change: e.change }
+    }
     return valid
   })
   const [lastUpdated, setLastUpdated] = useState(null)
   const timerRef = useRef(null)
 
-  const tickerKey = assets
+  const stockKey = assets
     .filter(a => a.category === 'Stocks' && a.ticker)
     .map(a => a.ticker).sort().join(',')
 
+  const cryptoKey = assets
+    .filter(a => a.category === 'Crypto' && a.ticker)
+    .map(a => a.ticker).sort().join(',')
+
+  const assetKey = stockKey + '|' + cryptoKey
+
   useEffect(() => {
-    if (!tickerKey) return
-    const tickers = tickerKey.split(',')
+    if (!stockKey && !cryptoKey) return
+    const stockTickers = stockKey ? stockKey.split(',') : []
+    const cryptoIds    = cryptoKey ? cryptoKey.split(',') : []
 
     async function fetchAll() {
       const now = Date.now()
       const results = {}
+      let didFetch = false
 
-      const settled = await Promise.allSettled(
-        tickers.map(async ticker => {
-          const cached = priceCache[ticker]
-          if (cached && now - (cached.ts || 0) < CACHE_TTL) {
+      // ── Stocks ────────────────────────────────────────────────────────────
+      const stockSettled = await Promise.allSettled(
+        stockTickers.map(async ticker => {
+          const cached = stockCache[ticker]
+          if (cached && now - (cached.ts || 0) < STOCK_CACHE_TTL) {
             return { ticker, data: { price: cached.price, change: cached.change, previousClose: cached.previousClose }, fromCache: true }
           }
           try {
-            const data = await fetchTicker(ticker)
+            const data = await fetchStockTicker(ticker)
             return { ticker, data, fromCache: false }
           } catch {
             return { ticker, data: null, fromCache: false }
@@ -66,34 +91,61 @@ export function useStockPrices(assets) {
         })
       )
 
-      let fetched = false
-      for (const result of settled) {
+      for (const result of stockSettled) {
         if (result.status !== 'fulfilled') continue
         const { ticker, data, fromCache } = result.value
         if (data) {
           results[ticker] = data
           if (!fromCache) {
-            priceCache[ticker] = { ...data, ts: now }
-            fetched = true
+            stockCache[ticker] = { ...data, ts: now }
+            didFetch = true
           }
         } else {
-          // fetch failed — use stale cache if available
-          const cached = priceCache[ticker]
+          const cached = stockCache[ticker]
           if (cached) results[ticker] = { price: cached.price, change: cached.change, previousClose: cached.previousClose }
         }
       }
+      if (didFetch) saveCache(LS_STOCK, stockCache)
 
-      if (fetched) saveCache(priceCache)
+      // ── Crypto ────────────────────────────────────────────────────────────
+      if (cryptoIds.length > 0) {
+        const staleIds = cryptoIds.filter(id => {
+          const cached = cryptoCache[id]
+          return !cached || now - (cached.ts || 0) >= CRYPTO_CACHE_TTL
+        })
+
+        if (staleIds.length > 0) {
+          try {
+            const fresh = await fetchCryptoIds(staleIds.join(','))
+            for (const [id, data] of Object.entries(fresh)) {
+              results[id] = data
+              cryptoCache[id] = { ...data, ts: now }
+            }
+            saveCache(LS_CRYPTO, cryptoCache)
+            didFetch = true
+          } catch {}
+        }
+
+        // serve fresh cached crypto too
+        for (const id of cryptoIds) {
+          if (!results[id]) {
+            const cached = cryptoCache[id]
+            if (cached) results[id] = { price: cached.price, change: cached.change }
+          }
+        }
+      }
+
       if (Object.keys(results).length) {
         setPrices(prev => ({ ...prev, ...results }))
-        setLastUpdated(new Date())
+        if (didFetch) setLastUpdated(new Date())
       }
     }
 
     fetchAll()
-    timerRef.current = setInterval(fetchAll, CACHE_TTL)
+    timerRef.current = setInterval(fetchAll, POLL_INTERVAL)
     return () => clearInterval(timerRef.current)
-  }, [tickerKey])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assetKey])
 
   return { prices, lastUpdated }
 }

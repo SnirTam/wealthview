@@ -5,20 +5,22 @@ import { formatAmount } from './Dashboard'
 import AssetLogo from '../components/AssetLogo'
 
 const CATEGORY_COLORS = {
-  Stocks: '#4d9fff', Crypto: '#ffb340', 'Real Estate': '#00d98b',
+  Stocks: '#4d9fff', Crypto: '#ffb340', NFTs: '#06b6d4', 'Real Estate': '#00d98b',
   Retirement: '#a78bfa', Cash: '#6b6b80', Others: '#9b8ea8',
 }
 const CATEGORIES = Object.keys(CATEGORY_COLORS)
 const CATEGORY_ICONS = {
-  Stocks: '📈', Crypto: '₿', 'Real Estate': '🏠', Retirement: '🏦', Cash: '💵', Others: '📦',
+  Stocks: '📈', Crypto: '₿', NFTs: '🖼️', 'Real Estate': '🏠', Retirement: '🏦', Cash: '💵', Others: '📦',
 }
-const CHAIN_COLORS = { ethereum: '#627EEA', bitcoin: '#F7931A', solana: '#9945FF' }
-const CHAIN_LABELS = { ethereum: 'Ethereum', bitcoin: 'Bitcoin', solana: 'Solana' }
-const CHAIN_ICONS  = { ethereum: '⟠', bitcoin: '₿', solana: '◎' }
+const CHAIN_COLORS = { ethereum: '#627EEA', polygon: '#8247E5', bitcoin: '#F7931A', solana: '#9945FF' }
+const CHAIN_LABELS = { ethereum: 'Ethereum', polygon: 'Polygon', bitcoin: 'Bitcoin', solana: 'Solana' }
+const CHAIN_ICONS  = { ethereum: '⟠', polygon: '⬡', bitcoin: '₿', solana: '◎' }
+const EVM_CHAINS   = ['ethereum', 'polygon']
 
 // Auto-detect chain from address format
-function detectChain(address) {
-  if (/^0x[a-fA-F0-9]{40}$/.test(address)) return 'ethereum'
+// 0x addresses could be ETH or Polygon — returns 'evm' for the toggle UI
+function detectAddressType(address) {
+  if (/^0x[a-fA-F0-9]{40}$/.test(address)) return 'evm'
   if (/^(1|3|bc1)[a-zA-Z0-9]{25,61}$/.test(address)) return 'bitcoin'
   if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) return 'solana'
   return null
@@ -31,20 +33,32 @@ async function fetchCryptoPrices() {
     const cached = localStorage.getItem('crypto_prices_cache')
     if (cached) {
       const { data, ts } = JSON.parse(cached)
-      if (Date.now() - ts < 5 * 60 * 1000) return data
+      if (Date.now() - ts < 60 * 1000) return data
     }
-    const data = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,solana&vs_currencies=usd').then(r => r.json())
+    const data = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum,bitcoin,solana,matic-network&vs_currencies=usd').then(r => r.json())
     localStorage.setItem('crypto_prices_cache', JSON.stringify({ data, ts: Date.now() }))
     return data
   } catch { return {} }
 }
 
-async function fetchWalletBalance(chain, address) {
+async function fetchNativeBalance(chain, address) {
   const prices = await fetchCryptoPrices()
   if (chain === 'ethereum') {
-    const data = await fetch(`https://api.etherscan.io/api?module=account&action=balance&address=${address}&tag=latest&apikey=YourApiKeyToken`).then(r => r.json())
-    const eth = parseInt(data.result) / 1e18
+    // Use public Cloudflare gateway (no key required)
+    const data = await fetch('https://cloudflare-eth.com', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [address, 'latest'] })
+    }).then(r => r.json())
+    const eth = parseInt(data.result, 16) / 1e18
     return { balance: eth, symbol: 'ETH', usd: eth * (prices.ethereum?.usd || 0) }
+  }
+  if (chain === 'polygon') {
+    const data = await fetch('https://polygon-rpc.com', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getBalance', params: [address, 'latest'] })
+    }).then(r => r.json())
+    const matic = parseInt(data.result, 16) / 1e18
+    return { balance: matic, symbol: 'MATIC', usd: matic * (prices['matic-network']?.usd || 0) }
   }
   if (chain === 'bitcoin') {
     const data = await fetch(`https://blockchain.info/rawaddr/${address}?cors=true`).then(r => r.json())
@@ -59,45 +73,163 @@ async function fetchWalletBalance(chain, address) {
     const sol = (data.result?.value || 0) / 1e9
     return { balance: sol, symbol: 'SOL', usd: sol * (prices.solana?.usd || 0) }
   }
+  return { balance: 0, symbol: '?', usd: 0 }
+}
+
+async function fetchERC20Tokens(chain, address, alchemyKey) {
+  if (!alchemyKey) return []
+  const network = chain === 'polygon' ? 'polygon-mainnet' : 'eth-mainnet'
+  const url = `https://${network}.g.alchemy.com/v2/${alchemyKey}`
+  try {
+    const balRes = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'alchemy_getTokenBalances', params: [address, 'erc20'] })
+    }).then(r => r.json())
+
+    const ZERO = '0x0000000000000000000000000000000000000000000000000000000000000000'
+    const nonZero = (balRes.result?.tokenBalances || []).filter(t => t.tokenBalance !== ZERO).slice(0, 20)
+    if (!nonZero.length) return []
+
+    const metas = await Promise.allSettled(nonZero.map(t =>
+      fetch(url, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'alchemy_getTokenMetadata', params: [t.contractAddress] })
+      }).then(r => r.json())
+    ))
+
+    const prices = await fetchCryptoPrices()
+    const results = []
+    for (let i = 0; i < nonZero.length; i++) {
+      const meta = metas[i].status === 'fulfilled' ? metas[i].value.result : null
+      if (!meta?.decimals || !meta?.symbol) continue
+      const balance = parseInt(nonZero[i].tokenBalance, 16) / (10 ** meta.decimals)
+      if (balance < 0.0001) continue
+      results.push({ symbol: meta.symbol, name: meta.name || meta.symbol, balance, logo: meta.logo, contractAddress: nonZero[i].contractAddress })
+    }
+    return results
+  } catch { return [] }
+}
+
+async function fetchWalletNFTs(chain, address, alchemyKey) {
+  if (!alchemyKey || !EVM_CHAINS.includes(chain)) return []
+  const network = chain === 'polygon' ? 'polygon-mainnet' : 'eth-mainnet'
+  try {
+    const data = await fetch(
+      `https://${network}.g.alchemy.com/nft/v3/${alchemyKey}/getNFTsForOwner?owner=${address}&withMetadata=true&pageSize=20`
+    ).then(r => r.json())
+    return (data.ownedNfts || []).map(nft => ({
+      tokenId: nft.tokenId,
+      name: nft.name || `#${nft.tokenId}`,
+      collection: nft.collection?.name || nft.contract?.name || 'Unknown Collection',
+      image: nft.image?.thumbnailUrl || nft.image?.originalUrl,
+      contractAddress: nft.contract?.address,
+      chain,
+      walletAddress: address,
+    }))
+  } catch { return [] }
+}
+
+async function fetchSolanaNFTs(address, heliusKey) {
+  if (!heliusKey) return []
+  try {
+    const res = await fetch(`https://mainnet.helius-rpc.com/?api-key=${heliusKey}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 1, method: 'getAssetsByOwner',
+        params: { ownerAddress: address, page: 1, limit: 20, displayOptions: { showFungible: false } }
+      })
+    }).then(r => r.json())
+    return (res.result?.items || []).map(item => ({
+      tokenId: item.id,
+      name: item.content?.metadata?.name || item.id.slice(0, 8),
+      collection: item.grouping?.find(g => g.group_key === 'collection')?.group_value || 'Solana NFT',
+      image: item.content?.links?.image,
+      contractAddress: item.id,
+      chain: 'solana',
+      walletAddress: address,
+    }))
+  } catch { return [] }
 }
 
 function WalletRow({ wallet, onRemove, onRefresh }) {
+  const [expanded, setExpanded] = useState(false)
   const color = CHAIN_COLORS[wallet.chain]
+  const tokens = wallet.tokens || []
+  const tokenUsd = tokens.reduce((s, t) => s + (t.usd || 0), 0)
+  const totalUsd = (wallet.usd || 0) + tokenUsd
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', padding: '14px 24px', borderBottom: '1px solid var(--border)', transition: 'background 0.15s' }}
-      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
-      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-    >
-      <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: color + '22', border: '1px solid ' + color + '55', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, marginRight: 14 }}>
-        {CHAIN_ICONS[wallet.chain]}
+    <div style={{ borderBottom: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '14px 24px', transition: 'background 0.15s' }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
+        <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, background: color + '22', border: '1px solid ' + color + '55', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, marginRight: 14 }}>
+          {CHAIN_ICONS[wallet.chain]}
+        </div>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)' }}>{shortenAddress(wallet.address)}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: color + '22', color, border: '1px solid ' + color + '44', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
+              {CHAIN_ICONS[wallet.chain]} {CHAIN_LABELS[wallet.chain]}
+            </span>
+            {tokens.length > 0 && (
+              <button onClick={() => setExpanded(e => !e)} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: 'var(--bg3)', color: 'var(--muted2)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+                {tokens.length} token{tokens.length !== 1 ? 's' : ''} {expanded ? '▲' : '▼'}
+              </button>
+            )}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', marginRight: 16 }}>
+          {wallet.loading ? (
+            <p style={{ fontSize: 13, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Loading…</p>
+          ) : wallet.error ? (
+            <p style={{ fontSize: 12, color: 'var(--red)', fontFamily: 'var(--font-body)' }}>Failed to fetch</p>
+          ) : (
+            <>
+              <p style={{ fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-display)' }}>
+                ${totalUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>
+                {(wallet.balance || 0).toFixed(4)} {wallet.symbol}
+                {tokens.length > 0 && <span style={{ color: 'var(--muted2)' }}> + {tokens.length} tokens</span>}
+              </p>
+            </>
+          )}
+        </div>
+        {[
+          { icon: '↻', title: 'Refresh', fn: () => onRefresh(wallet.address), hover: { borderColor: 'var(--blue)', color: 'var(--blue)' } },
+          { icon: '×', title: 'Remove', fn: () => onRemove(wallet.address), hover: { background: 'var(--red-dim)', borderColor: 'var(--red)', color: 'var(--red)' } },
+        ].map(btn => (
+          <button key={btn.title} onClick={btn.fn} title={btn.title} style={{ width: 28, height: 28, borderRadius: 8, marginLeft: 6, background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+            onMouseEnter={e => Object.assign(e.currentTarget.style, btn.hover)}
+            onMouseLeave={e => Object.assign(e.currentTarget.style, { background: 'transparent', borderColor: 'var(--border)', color: 'var(--muted)' })}
+          >{btn.icon}</button>
+        ))}
       </div>
-      <div style={{ flex: 1 }}>
-        <p style={{ fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)' }}>{shortenAddress(wallet.address)}</p>
-        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, background: color + '22', color, border: '1px solid ' + color + '44', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
-          {CHAIN_LABELS[wallet.chain]}
-        </span>
-      </div>
-      <div style={{ textAlign: 'right', marginRight: 16 }}>
-        {wallet.loading ? (
-          <p style={{ fontSize: 13, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>Loading...</p>
-        ) : wallet.error ? (
-          <p style={{ fontSize: 12, color: 'var(--red)', fontFamily: 'var(--font-body)' }}>Failed to fetch</p>
-        ) : (
-          <>
-            <p style={{ fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-display)' }}>${(wallet.usd || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-            <p style={{ fontSize: 11, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>{(wallet.balance || 0).toFixed(4)} {wallet.symbol}</p>
-          </>
-        )}
-      </div>
-      {[
-        { icon: '↻', title: 'Refresh', fn: () => onRefresh(wallet.address), hover: { borderColor: 'var(--blue)', color: 'var(--blue)' } },
-        { icon: '×', title: 'Remove', fn: () => onRemove(wallet.address), hover: { background: 'var(--red-dim)', borderColor: 'var(--red)', color: 'var(--red)' } },
-      ].map(btn => (
-        <button key={btn.title} onClick={btn.fn} title={btn.title} style={{ width: 28, height: 28, borderRadius: 8, marginLeft: 6, background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
-          onMouseEnter={e => Object.assign(e.currentTarget.style, btn.hover)}
-          onMouseLeave={e => Object.assign(e.currentTarget.style, { background: 'transparent', borderColor: 'var(--border)', color: 'var(--muted)' })}
-        >{btn.icon}</button>
-      ))}
+
+      {/* ERC-20 token breakdown */}
+      {expanded && tokens.length > 0 && (
+        <div style={{ background: 'var(--bg3)', borderTop: '1px solid var(--border)', padding: '8px 24px 8px 74px' }}>
+          {tokens.map((t, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: i < tokens.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {t.logo
+                  ? <img src={t.logo} style={{ width: 20, height: 20, borderRadius: '50%' }} onError={e => { e.target.style.display = 'none' }} alt="" />
+                  : <div style={{ width: 20, height: 20, borderRadius: '50%', background: color + '33', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, color }}>{t.symbol.slice(0, 2)}</div>
+                }
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 500, fontFamily: 'var(--font-body)' }}>{t.symbol}</p>
+                  <p style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-body)' }}>{t.name}</p>
+                </div>
+              </div>
+              <p style={{ fontSize: 12, fontFamily: 'var(--font-body)', color: 'var(--muted2)' }}>
+                {t.balance < 0.001 ? t.balance.toFixed(6) : t.balance.toFixed(4)} {t.symbol}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -132,50 +264,94 @@ export default function Assets({ assets, setAssets, isPro, currency = 'USD', use
   const [editingAsset, setEditingAsset] = useState(null)
   const [exportOpen, setExportOpen] = useState(false)
   const [wallets, setWallets] = useState(() => { try { return JSON.parse(localStorage.getItem('wealthview_wallets') || '[]') } catch { return [] } })
+  const [nfts, setNfts] = useState(() => { try { return JSON.parse(localStorage.getItem('wv_nfts') || '[]') } catch { return [] } })
   const [showAddWallet, setShowAddWallet] = useState(false)
   const [walletAddress, setWalletAddress] = useState('')
+  const [evmChain, setEvmChain] = useState('ethereum')  // toggle for 0x addresses
   const [walletError, setWalletError] = useState('')
   const [walletLoading, setWalletLoading] = useState(false)
+  const [alchemyKey, setAlchemyKey] = useState(() => localStorage.getItem('wv_alchemy_key') || '')
+  const [heliusKey, setHeliusKey]   = useState(() => localStorage.getItem('wv_helius_key')  || '')
+  const [showApiKeys, setShowApiKeys] = useState(false)
   const exportRef = useRef(null)
 
   const total = assets.reduce((s, a) => s + (a.value || 0), 0)
-  const walletTotal = wallets.reduce((s, w) => s + (w.usd || 0), 0)
+  const walletTotal = wallets.reduce((s, w) => s + (w.usd || 0) + (w.tokens || []).reduce((t, tok) => t + (tok.usd || 0), 0), 0)
   const filtered = filter === 'All' ? assets : assets.filter(a => a.category === filter)
 
-  // Detect chain live as user types
-  const detectedChain = detectChain(walletAddress.trim())
+  // Detect address type live as user types
+  const detectedType = detectAddressType(walletAddress.trim())
 
   useEffect(() => {
     localStorage.setItem('wealthview_wallets', JSON.stringify(wallets))
   }, [wallets])
 
-  async function loadBalance(chain, address) {
-    setWallets(p => p.map(w => w.address === address ? { ...w, loading: true, error: false } : w))
+  useEffect(() => {
+    localStorage.setItem('wv_nfts', JSON.stringify(nfts))
+  }, [nfts])
+
+  async function loadWalletData(chain, address) {
+    const key = address + ':' + chain
+    setWallets(p => p.map(w => w.key === key ? { ...w, loading: true, error: false } : w))
     try {
-      const result = await fetchWalletBalance(chain, address)
-      setWallets(p => p.map(w => w.address === address ? { ...w, ...result, loading: false, updatedAt: Date.now() } : w))
+      const nativeResult = await fetchNativeBalance(chain, address)
+      setWallets(p => p.map(w => w.key === key ? { ...w, ...nativeResult, loading: false, updatedAt: Date.now() } : w))
+
+      // ERC-20 tokens (Alchemy)
+      if (EVM_CHAINS.includes(chain) && alchemyKey) {
+        const tokens = await fetchERC20Tokens(chain, address, alchemyKey)
+        setWallets(p => p.map(w => w.key === key ? { ...w, tokens } : w))
+      }
+
+      // NFTs
+      if (EVM_CHAINS.includes(chain) && alchemyKey) {
+        const walletNfts = await fetchWalletNFTs(chain, address, alchemyKey)
+        setNfts(prev => {
+          const filtered = prev.filter(n => !(n.walletAddress === address && n.chain === chain))
+          return [...filtered, ...walletNfts]
+        })
+      }
+      if (chain === 'solana' && heliusKey) {
+        const solNfts = await fetchSolanaNFTs(address, heliusKey)
+        setNfts(prev => {
+          const filtered = prev.filter(n => !(n.walletAddress === address && n.chain === 'solana'))
+          return [...filtered, ...solNfts]
+        })
+      }
     } catch {
-      setWallets(p => p.map(w => w.address === address ? { ...w, loading: false, error: true } : w))
+      setWallets(p => p.map(w => w.key === key ? { ...w, loading: false, error: true } : w))
     }
   }
 
   async function handleAddWallet() {
     setWalletError('')
     const addr = walletAddress.trim()
-    const chain = detectChain(addr)
-    if (!chain) { setWalletError('Unrecognized wallet address — please check and try again'); return }
-    if (wallets.find(w => w.address === addr)) { setWalletError('Wallet already linked'); return }
+    const addrType = detectAddressType(addr)
+    if (!addrType) { setWalletError('Unrecognized address — paste a valid ETH/Polygon (0x…), Bitcoin or Solana address'); return }
+
+    const chain = addrType === 'evm' ? evmChain : addrType
+    const key = addr + ':' + chain
+
+    if (wallets.find(w => w.key === key)) { setWalletError('This wallet is already linked on ' + CHAIN_LABELS[chain]); return }
     setWalletLoading(true)
-    setWallets(p => [...p, { chain, address: addr, loading: true, usd: 0 }])
+    setWallets(p => [...p, { key, chain, address: addr, loading: true, usd: 0, tokens: [] }])
     setShowAddWallet(false)
     setWalletAddress('')
     setWalletLoading(false)
-    loadBalance(chain, addr)
+    loadWalletData(chain, addr)
   }
 
   function removeAsset(id) { setAssets(assets.filter(a => a.id !== id)) }
   function updateAssetValue(id, v) { setAssets(assets.map(a => a.id === id ? { ...a, value: v } : a)) }
-  function removeWallet(address) { setWallets(p => p.filter(w => w.address !== address)) }
+  function removeWallet(address) {
+    setWallets(p => p.filter(w => w.address !== address))
+    setNfts(prev => prev.filter(n => n.walletAddress !== address))
+  }
+  function saveApiKeys() {
+    localStorage.setItem('wv_alchemy_key', alchemyKey)
+    localStorage.setItem('wv_helius_key', heliusKey)
+    setShowApiKeys(false)
+  }
 
   function exportCSV() {
     const rows = [['Name','Category','Ticker','Value (USD)'], ...assets.map(a => [a.name, a.category, a.ticker||'', a.value||0])]
@@ -351,39 +527,89 @@ export default function Assets({ assets, setAssets, isPro, currency = 'USD', use
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>Linked wallets</h2>
-            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, fontFamily: 'var(--font-body)' }}>Paste any wallet address — chain is detected automatically</p>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, fontFamily: 'var(--font-body)' }}>
+              ETH · Polygon · Bitcoin · Solana — native + ERC-20 tokens + NFTs
+            </p>
           </div>
-          <button onClick={() => setShowAddWallet(o => !o)} style={{ background: 'linear-gradient(135deg, var(--green), var(--teal))', color: '#0a0a0f', padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
-            {showAddWallet ? '✕ Cancel' : '+ Link wallet'}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setShowApiKeys(o => !o)} style={{ background: 'var(--bg2)', color: 'var(--muted2)', padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500, border: '1px solid var(--border2)', cursor: 'pointer', fontFamily: 'var(--font-body)' }}>
+              🔑 API Keys {alchemyKey || heliusKey ? '✓' : ''}
+            </button>
+            <button onClick={() => setShowAddWallet(o => !o)} style={{ background: 'linear-gradient(135deg, var(--green), var(--teal))', color: '#0a0a0f', padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>
+              {showAddWallet ? '✕ Cancel' : '+ Link wallet'}
+            </button>
+          </div>
         </div>
+
+        {/* API Keys panel */}
+        {showApiKeys && (
+          <div style={{ background: 'var(--bg2)', borderRadius: 14, padding: '20px', border: '1px solid var(--border2)', marginBottom: 16 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-display)', marginBottom: 4 }}>API Keys <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 400 }}>(stored locally only — never sent to any server)</span></p>
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 14, fontFamily: 'var(--font-body)', lineHeight: 1.5 }}>
+              Without keys: native balances only (ETH, MATIC, BTC, SOL). Add keys to unlock ERC-20 tokens + NFTs.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                { label: 'Alchemy API Key', placeholder: 'Unlocks ERC-20 tokens + NFTs on ETH/Polygon (free at alchemy.com)', val: alchemyKey, set: setAlchemyKey, lsKey: 'wv_alchemy_key' },
+                { label: 'Helius API Key', placeholder: 'Unlocks Solana NFTs (free at helius.dev)', val: heliusKey, set: setHeliusKey, lsKey: 'wv_helius_key' },
+              ].map(field => (
+                <div key={field.label}>
+                  <p style={{ fontSize: 11, color: 'var(--muted2)', marginBottom: 5, fontFamily: 'var(--font-body)', fontWeight: 500 }}>{field.label}</p>
+                  <input type="password" value={field.val} onChange={e => field.set(e.target.value)} placeholder={field.placeholder}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--bg3)', color: 'var(--text)', fontSize: 12, outline: 'none', fontFamily: 'monospace' }}
+                  />
+                </div>
+              ))}
+              <button onClick={saveApiKeys} style={{ alignSelf: 'flex-start', padding: '8px 20px', borderRadius: 8, background: 'linear-gradient(135deg, var(--green), var(--teal))', color: '#0a0a0f', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-display)' }}>
+                Save keys
+              </button>
+            </div>
+          </div>
+        )}
 
         {showAddWallet && (
           <div style={{ background: 'var(--bg2)', borderRadius: 14, padding: '20px', border: '1px solid var(--border2)', marginBottom: 16 }}>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <div style={{ flex: 1, position: 'relative' }}>
-                <input
-                  placeholder="Paste any wallet address — ETH, BTC or SOL"
-                  value={walletAddress}
-                  onChange={e => { setWalletAddress(e.target.value); setWalletError('') }}
-                  onKeyDown={e => e.key === 'Enter' && handleAddWallet()}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: walletError ? '1px solid var(--red)' : '1px solid var(--border2)', background: 'var(--bg3)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)' }}
-                />
-                {/* Live chain detection badge */}
-                {detectedChain && (
-                  <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, padding: '2px 8px', borderRadius: 10, background: CHAIN_COLORS[detectedChain] + '22', color: CHAIN_COLORS[detectedChain], border: '1px solid ' + CHAIN_COLORS[detectedChain] + '44', fontFamily: 'var(--font-body)', fontWeight: 600, pointerEvents: 'none' }}>
-                    {CHAIN_ICONS[detectedChain]} {CHAIN_LABELS[detectedChain]}
-                  </span>
-                )}
+            <input
+              placeholder="Paste any wallet address — ETH/Polygon (0x…), Bitcoin or Solana"
+              value={walletAddress}
+              onChange={e => { setWalletAddress(e.target.value); setWalletError('') }}
+              onKeyDown={e => e.key === 'Enter' && handleAddWallet()}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: walletError ? '1px solid var(--red)' : '1px solid var(--border2)', background: 'var(--bg3)', color: 'var(--text)', fontSize: 13, outline: 'none', fontFamily: 'var(--font-body)', marginBottom: 10 }}
+            />
+
+            {/* Chain picker for EVM addresses */}
+            {detectedType === 'evm' && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <p style={{ fontSize: 12, color: 'var(--muted2)', fontFamily: 'var(--font-body)', alignSelf: 'center', marginRight: 4 }}>Network:</p>
+                {['ethereum', 'polygon'].map(c => (
+                  <button key={c} onClick={() => setEvmChain(c)} style={{
+                    padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: evmChain === c ? 600 : 400,
+                    background: evmChain === c ? CHAIN_COLORS[c] + '22' : 'transparent',
+                    color: evmChain === c ? CHAIN_COLORS[c] : 'var(--muted)',
+                    border: '1px solid ' + (evmChain === c ? CHAIN_COLORS[c] + '66' : 'var(--border)'),
+                    cursor: 'pointer', fontFamily: 'var(--font-body)',
+                  }}>
+                    {CHAIN_ICONS[c]} {CHAIN_LABELS[c]}
+                  </button>
+                ))}
               </div>
-              <button onClick={handleAddWallet} disabled={walletLoading} style={{ background: 'linear-gradient(135deg, var(--green), var(--teal))', color: '#0a0a0f', padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-display)', opacity: walletLoading ? 0.7 : 1 }}>
-                {walletLoading ? 'Linking...' : 'Link'}
+            )}
+
+            {/* Detection badge for BTC/SOL */}
+            {detectedType && detectedType !== 'evm' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <span style={{ fontSize: 11, padding: '2px 10px', borderRadius: 10, background: CHAIN_COLORS[detectedType] + '22', color: CHAIN_COLORS[detectedType], border: '1px solid ' + CHAIN_COLORS[detectedType] + '44', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
+                  {CHAIN_ICONS[detectedType]} {CHAIN_LABELS[detectedType]} detected
+                </span>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={handleAddWallet} disabled={walletLoading || !detectedType} style={{ background: detectedType ? 'linear-gradient(135deg, var(--green), var(--teal))' : 'var(--bg3)', color: detectedType ? '#0a0a0f' : 'var(--muted)', padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 700, border: 'none', cursor: detectedType ? 'pointer' : 'not-allowed', fontFamily: 'var(--font-display)', opacity: walletLoading ? 0.7 : 1 }}>
+                {walletLoading ? 'Linking…' : detectedType === 'evm' ? `Link on ${CHAIN_LABELS[evmChain]}` : 'Link wallet'}
               </button>
             </div>
             {walletError && <p style={{ fontSize: 12, color: 'var(--red)', marginTop: 8, fontFamily: 'var(--font-body)' }}>{walletError}</p>}
-            <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 8, fontFamily: 'var(--font-body)' }}>
-              Supports: Ethereum (0x...) · Bitcoin (1..., 3..., bc1...) · Solana (base58)
-            </p>
           </div>
         )}
 
@@ -395,8 +621,8 @@ export default function Assets({ assets, setAssets, isPro, currency = 'USD', use
         ) : (
           <div style={{ background: 'var(--bg2)', borderRadius: 14, border: '1px solid var(--border)', overflow: 'hidden' }}>
             {wallets.map(wallet => (
-              <WalletRow key={wallet.address} wallet={wallet} onRemove={removeWallet}
-                onRefresh={addr => { const w = wallets.find(x => x.address === addr); if (w) loadBalance(w.chain, addr) }}
+              <WalletRow key={wallet.key || wallet.address} wallet={wallet} onRemove={removeWallet}
+                onRefresh={addr => { const w = wallets.find(x => x.address === addr); if (w) loadWalletData(w.chain, addr) }}
               />
             ))}
             <div style={{ padding: '14px 24px', borderTop: '1px solid var(--border2)', background: 'var(--bg3)', display: 'flex', justifyContent: 'space-between' }}>
@@ -406,6 +632,41 @@ export default function Assets({ assets, setAssets, isPro, currency = 'USD', use
           </div>
         )}
       </div>
+
+      {/* NFT Gallery */}
+      {nfts.length > 0 && (
+        <div className="fade-up" style={{ marginTop: 32 }}>
+          <div style={{ marginBottom: 16 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, fontFamily: 'var(--font-display)', letterSpacing: 0.3 }}>NFTs</h2>
+            <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4, fontFamily: 'var(--font-body)' }}>{nfts.length} NFT{nfts.length !== 1 ? 's' : ''} across your wallets</p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 12 }}>
+            {nfts.map((nft, i) => {
+              const color = CHAIN_COLORS[nft.chain] || '#888'
+              return (
+                <div key={i} style={{ background: 'var(--bg2)', borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden', transition: 'border-color 0.15s, transform 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border2)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'translateY(0)' }}
+                >
+                  <div style={{ aspectRatio: '1', background: color + '15', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                    {nft.image
+                      ? <img src={nft.image} alt={nft.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none' }} />
+                      : <span style={{ fontSize: 32 }}>🖼️</span>
+                    }
+                  </div>
+                  <div style={{ padding: '10px 12px' }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-body)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nft.name}</p>
+                    <p style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'var(--font-body)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nft.collection}</p>
+                    <span style={{ fontSize: 10, padding: '1px 6px', borderRadius: 10, background: color + '22', color, border: '1px solid ' + color + '44', fontFamily: 'var(--font-body)', fontWeight: 600, display: 'inline-block', marginTop: 6 }}>
+                      {CHAIN_ICONS[nft.chain]} {CHAIN_LABELS[nft.chain]}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

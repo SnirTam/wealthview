@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useFxRates, CURRENCY_META, liveRates } from '../useFxRates'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { useStockPrices } from '../useStockPrices'
 import { startCheckout } from '../stripe'
@@ -6,8 +7,8 @@ import { supabase } from '../supabase'
 import AssetLogo from '../components/AssetLogo'
 import ShareCard from '../components/ShareCard'
 
-const CATEGORY_COLORS = { Stocks:'#4d9fff', Crypto:'#ffb340', 'Real Estate':'#00d98b', Retirement:'#a78bfa', Cash:'#6b6b80', Others:'#9b8ea8' }
-const CATEGORY_ICONS  = { Stocks:'📈', Crypto:'₿', 'Real Estate':'🏠', Retirement:'🏦', Cash:'💵', Others:'📦' }
+const CATEGORY_COLORS = { Stocks:'#4d9fff', Crypto:'#ffb340', NFTs:'#06b6d4', 'Real Estate':'#00d98b', Retirement:'#a78bfa', Cash:'#6b6b80', Others:'#9b8ea8' }
+const CATEGORY_ICONS  = { Stocks:'📈', Crypto:'₿', NFTs:'🖼️', 'Real Estate':'🏠', Retirement:'🏦', Cash:'💵', Others:'📦' }
 const CHART_PERIODS = ['1W','1M','3M','6M','1Y','All']
 const CHART_PERIOD_DAYS = { '1W':7,'1M':30,'3M':90,'6M':180,'1Y':365,'All':Infinity }
 const POPULAR_STOCKS  = [
@@ -23,13 +24,20 @@ const POPULAR_CRYPTO = [
 ]
 const CATEGORIES = Object.keys(CATEGORY_COLORS)
 
-export const CURRENCIES = {
-  USD:{symbol:'$',rate:1,label:'USD'}, EUR:{symbol:'€',rate:0.92,label:'EUR'},
-  GBP:{symbol:'£',rate:0.79,label:'GBP'}, ILS:{symbol:'₪',rate:3.7,label:'ILS'},
-}
-export function formatAmount(usd, currency='USD') {
-  const c=CURRENCIES[currency]||CURRENCIES.USD
-  return c.symbol+(usd*c.rate).toLocaleString(undefined,{maximumFractionDigits:0})
+// Keep CURRENCIES as compat export — now backed by live rates via liveRates module variable
+export const CURRENCIES = new Proxy({}, {
+  get(_, k) {
+    const m = CURRENCY_META[k] || CURRENCY_META.USD
+    return { symbol: m.symbol, rate: liveRates[k] || 1, label: k }
+  },
+  ownKeys() { return Object.keys(CURRENCY_META) },
+  has(_, k) { return k in CURRENCY_META },
+  getOwnPropertyDescriptor(t, k) { return k in CURRENCY_META ? { configurable: true, enumerable: true, value: t[k] } : undefined },
+})
+export function formatAmount(usd, currency = 'USD') {
+  const symbol = CURRENCY_META[currency]?.symbol || '$'
+  const rate = liveRates[currency] || 1
+  return symbol + (usd * rate).toLocaleString(undefined, { maximumFractionDigits: 0 })
 }
 
 function getFirstName(user) {
@@ -241,9 +249,9 @@ function AddAssetModal({onAdd,onClose,isPro,assetsCount,freeLimit,userEmail,pref
 }
 
 export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset,setShowAddAsset,saveAssets,freeLimit,setPage,netWorthHistory,currency,setCurrency,prefillAsset,onPrefillUsed}) {
-  const [cryptoPrices,setCryptoPrices]=useState({})
-  const {prices:stockPrices,lastUpdated:stockLastUpdated}=useStockPrices(assets)
-  const [cryptoLastUpdated,setCryptoLastUpdated]=useState(null)
+  useFxRates() // keeps liveRates fresh; triggers re-render when rates update
+  const {prices:allPrices,lastUpdated:lastUpdated}=useStockPrices(assets)
+  const stockPrices=allPrices  // stocks + crypto now unified
   const [clock,setClock]=useState(new Date())
   const [showShareCard,setShowShareCard]=useState(false)
   const [chartPeriod,setChartPeriod]=useState('1M')
@@ -257,7 +265,7 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
   const history=netWorthHistory||[]
   const chartData=buildChartData(history,total,chartPeriod)
   const periodChange=calcPeriodChange(history,total,chartPeriod)
-  const lastUpdated=stockLastUpdated||cryptoLastUpdated
+  // lastUpdated comes from useStockPrices directly
 
   // Chart Y domain — start near min so growth looks dramatic
   const dashboardDisplayData=chartData||generateDashboardSample(total,chartPeriod)
@@ -282,23 +290,16 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
 
   const topAssets=[...assets].sort((a,b)=>b.value-a.value).slice(0,5)
 
-  useEffect(()=>{
-    const ids=assets.filter(a=>a.category==='Crypto'&&a.ticker).map(a=>a.ticker).join(',')
-    if(!ids) return
-    fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`)
-      .then(r=>r.json()).then(d=>{setCryptoPrices(d);setCryptoLastUpdated(new Date())}).catch(()=>{})
-  },[assets])
-
-  const cryptoChanges=assets.filter(a=>a.category==='Crypto'&&a.ticker&&cryptoPrices[a.ticker]).map(a=>cryptoPrices[a.ticker].usd_24h_change)
+  // Crypto and stock changes now come from unified useStockPrices hook (60s polling)
+  const cryptoChanges=assets.filter(a=>a.category==='Crypto'&&a.ticker&&allPrices[a.ticker]).map(a=>allPrices[a.ticker].change)
   const avgCryptoChange=cryptoChanges.length?cryptoChanges.reduce((s,c)=>s+c,0)/cryptoChanges.length:null
-  const stockChanges=assets.filter(a=>a.category==='Stocks'&&a.ticker&&stockPrices[a.ticker]).map(a=>stockPrices[a.ticker].change)
+  const stockChanges=assets.filter(a=>a.category==='Stocks'&&a.ticker&&allPrices[a.ticker]).map(a=>allPrices[a.ticker].change)
   const avgStockChange=stockChanges.length?stockChanges.reduce((s,c)=>s+c,0)/stockChanges.length:null
-  const stockDollarChange=avgStockChange!=null?assets.filter(a=>a.category==='Stocks'&&a.ticker&&stockPrices[a.ticker]).reduce((s,a)=>s+a.value*(stockPrices[a.ticker].change/100),0):null
-  const cryptoDollarChange=avgCryptoChange!=null?assets.filter(a=>a.category==='Crypto'&&a.ticker&&cryptoPrices[a.ticker]).reduce((s,a)=>s+a.value*(cryptoPrices[a.ticker].usd_24h_change/100),0):null
+  const stockDollarChange=avgStockChange!=null?assets.filter(a=>a.category==='Stocks'&&a.ticker&&allPrices[a.ticker]).reduce((s,a)=>s+a.value*(allPrices[a.ticker].change/100),0):null
+  const cryptoDollarChange=avgCryptoChange!=null?assets.filter(a=>a.category==='Crypto'&&a.ticker&&allPrices[a.ticker]).reduce((s,a)=>s+a.value*(allPrices[a.ticker].change/100),0):null
 
   function getLiveChange(asset) {
-    if(asset.category==='Crypto'&&asset.ticker&&cryptoPrices[asset.ticker]) return cryptoPrices[asset.ticker].usd_24h_change
-    if(asset.category==='Stocks'&&asset.ticker&&stockPrices[asset.ticker]) return stockPrices[asset.ticker].change
+    if((asset.category==='Crypto'||asset.category==='Stocks')&&asset.ticker&&allPrices[asset.ticker]) return allPrices[asset.ticker].change
     return null
   }
 
@@ -318,7 +319,7 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
   const currencySelector=(
     <div style={{position:'relative',display:'inline-flex',alignItems:'center'}}>
       <select value={currency} onChange={e=>setCurrency(e.target.value)} style={{background:'var(--bg2)',color:'var(--muted2)',border:'1px solid var(--border2)',borderRadius:8,padding:'7px 28px 7px 12px',fontSize:12,cursor:'pointer',fontFamily:'var(--font-body)',outline:'none',appearance:'none',WebkitAppearance:'none',fontWeight:500}}>
-        {Object.entries(CURRENCIES).map(([k,v])=><option key={k} value={k}>{v.symbol} {k}</option>)}
+        {Object.entries(CURRENCY_META).map(([k,v])=><option key={k} value={k}>{v.symbol} {k} — {v.name}</option>)}
       </select>
       <svg style={{position:'absolute',right:8,pointerEvents:'none',color:'var(--muted)'}} width="10" height="10" viewBox="0 0 10 10" fill="none">
         <path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -528,7 +529,7 @@ export default function Dashboard({assets,liabilities=[],isPro,user,showAddAsset
         {topAssets.map((asset,i)=>{
           const change=getLiveChange(asset)
           const pct=(asset.value/total*100).toFixed(1)
-          const livePrice=asset.category==='Stocks'&&asset.ticker&&stockPrices[asset.ticker]?stockPrices[asset.ticker].price:null
+          const livePrice=asset.ticker&&allPrices[asset.ticker]?allPrices[asset.ticker].price:null
           const dollarChange=change!=null?asset.value*(change/100):null
           return (
             <div key={asset.id} className="holdings-row" style={{display:'flex',alignItems:'center',padding:'14px 24px',borderBottom:i<topAssets.length-1?'1px solid var(--border)':'none',transition:'background 0.15s',cursor:'default'}}
